@@ -1,0 +1,28 @@
+# specific files
+^Notes(\.txt)*$
+^Todo(\.txt)*$
+
+# version control files
+\B\.git\b
+\B\.gitignore$
+
+# Makemaker generated and utility files
+\bMakefile$
+\bblib
+\bpm_to_blib$
+^MANIFEST\.SKIP$
+
+# Module::Build generated and utility files
+\bBuild$
+\b_build
+
+# temp and backup files
+\.un~$
+\.swp$
+\.old$
+\.bak$
+
+# archives of this distribution
+\bGeo-[\d\.\_]+
+^MYMETA.yml$
+^MYMETA.json$

@@ -2,7 +2,7 @@ package Geo::Gpx::Point;
 use strict;
 use warnings;
 
-our $VERSION = '1.0';
+our $VERSION = '1.01';
 
 =head1 NAME
 
@@ -223,11 +223,11 @@ Coming soon.
 
 =head1 AUTHOR
 
-Patrick Joly
+Patrick Joly C<< <patjol@cpan.org> >>.
 
 =head1 VERSION
 
-1.0
+$VERSION = '1.01'
 
 =head1 SEE ALSO
 
