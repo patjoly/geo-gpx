@@ -1189,11 +1189,11 @@ This version by Patrick Joly C<< <patjol@cpan.org> >>.
 
 =head1 VERSION
 
-$VERSION = '1.02'
+1.02
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2007-2009, Andy Armstrong C<< <andy@hexten.net> >>. All
+Copyright (c) 2004-2022, Andy Armstrong C<< <andy@hexten.net> >>, Patrick Joly C<< patjol@cpan.org >>. All
 rights reserved.
 
 This module is free software; you can redistribute it and/or

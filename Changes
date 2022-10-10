@@ -1,5 +1,8 @@
 Revision history for Geo-Gpx
 
+1.02 [2022-10-10]
+    Switched to Dist::Zilla to manage and release the module
+
 1.01 [2022-10-08]
     fixed missing dependencies in Makefile.PL and Build.PL:
         - Geo::Calc

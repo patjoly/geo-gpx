@@ -14,14 +14,7 @@ Alternatively, to install with Module::Build, you can use the following commands
     ./Build test
     ./Build install
 
+    The Build.PL file is not maintained in the github repository. If you obtained the code from GitHub and would like to install with Module::Build, download the source tarball of the module from CPAN.org instead; it contains Build.PL (see https://metacpan.org/pod/Geo::Gpx).
+
 DEPENDENCIES
-
-None.
-
-COPYRIGHT AND LICENCE
-
-Copyright (C) Rich Bowen
-Copyright (C) 2006, Andy Armstrong
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+    See the README.md

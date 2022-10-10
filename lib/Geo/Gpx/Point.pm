@@ -227,7 +227,7 @@ Patrick Joly C<< <patjol@cpan.org> >>.
 
 =head1 VERSION
 
-$VERSION = '1.02'
+1.02
 
 =head1 SEE ALSO
 
