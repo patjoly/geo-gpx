@@ -3,7 +3,7 @@ package Geo::Gpx;
 use warnings;
 use strict;
 
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 use Carp;
 use DateTime::Format::ISO8601;
@@ -1189,7 +1189,7 @@ This version by Patrick Joly C<< <patjol@cpan.org> >>.
 
 =head1 VERSION
 
-1.02
+1.03
 
 =head1 LICENCE AND COPYRIGHT
 
