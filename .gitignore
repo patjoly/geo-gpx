@@ -6,3 +6,8 @@ blib/
 pm_to_blib
 Notes
 Todo
+.build/
+Geo-gpx*/
+Geo-gpx*.tar.gz
+*.bak
+

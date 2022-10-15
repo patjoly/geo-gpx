@@ -14,38 +14,26 @@ use Time::Local;
 use XML::Descent;
 use Geo::Gpx::Point;
 
+=encoding utf8
+
 =head1 NAME
 
-Geo::Gpx - Create and parse GPX files.
+Geo::Gpx - Create and parse GPX files
 
 =head1 SYNOPSIS
 
-  # Version 0.10 compatibility
-  use Geo::Gpx;
-  my $gpx = Geo::Gpx->new( @waypoints );
-  my $xml = $gpx->xml;
+  my ($gpx, $waypoints, $track);
 
-  # New API, generate GPX
-  my $gpx = Geo::Gpx->new();
-  $gpx->waypoints( \@wpt );
-  my $xml = $gpx->xml( '1.0' );
+  # From an open file or an XML string
+  $gpx = Geo::Gpx->new( input => $fh );
+  $gpx = Geo::Gpx->new( xml => $xml );
 
-  # Parse GPX
-  my $gpx       = Geo::Gpx->new( xml => $xml );
-  my $waypoints = $gpx->waypoints();
-  my $tracks    = $gpx->tracks();
-
-  # Parse GPX from open file
-  my $gpx       = Geo::Gpx->new( input => $fh );
   my $waypoints = $gpx->waypoints();
   my $tracks    = $gpx->tracks();
 
 =head1 DESCRIPTION
 
-The original goal of this module was to produce GPX/XML files which were
-parsable by both GPX Spinner and EasyGPS. As of version 0.13 it has
-been extended to support general parsing and generation of GPX data. GPX
-1.0 and 1.1 are supported.
+C<Geo::Gpx> supports the parsing and generation of GPX data. GPX 1.0 and 1.1 are supported.
 
 =cut
 
@@ -175,40 +163,15 @@ sub _init_shiny_new {
   };
 }
 
-=head1 INTERFACE
+=head2 Constructor
 
-=head2 C<new( { args } )>
+=over 4
 
-The original purpose of C<Geo::Gpx> was to allow an array of
-L<Geo::Cache> objects to be converted into a GPX file. This behaviour is
-maintained by this release:
+=item new( args [, use_datetime => true/false )
 
-  use Geo::Gpx;
-  my $gpx = Geo::Gpx->new( @waypoints );
-  my $xml = $gpx->xml;
+Create and return a new C<Geo::Gpx> instance based on an array of points that can each be constructed as L<Geo::Gpx::Point> objects or with a supplied XML file handle or XML string.
 
-New applications can use C <Geo::Gpx> to parse a GPX file :
-
- my $gpx = Geo::Gpx->new( xml => $gpx_document );
-
-or from an open filehandle :
-
- my $gpx = Geo::Gpx->new( input => $fh );
-
-or can create an empty container to which waypoints, routes and tracks
-can then be added:
-
-  my $gpx = Geo::Gpx->new();
-  $gpx->waypoints( \@wpt );
-
-The following additional options can be specified:
-
-=over
-
-=item C< use_datetime >
-
-If true time values in parsed GPX will be L<DateTime> objects rather
-than epoch times.
+If C<use_datetime> is set to true, time values in parsed GPX will be L<DateTime> objects rather than epoch times. (This option may be disabled in the future in favour of a method that can return a L<DateTime> object from a specified point.)
 
 =back
 
@@ -383,6 +346,20 @@ sub _parse {
   $p->walk();
 }
 
+=head2 Methods
+
+=over 4
+
+=item waypoints( \@waypoints )
+
+Initialize waypoints based on an array reference containing either a list of L<Geo::Gpx::Point>s or hash references with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
+
+Returns the array reference of L<Geo::Gpx::Points> stored as waypoints.
+
+=back
+
+=cut
+
 sub waypoints {
     my ($self, $aref) = @_;
     return $self->{waypoints} unless $aref;
@@ -393,43 +370,23 @@ sub waypoints {
     return $self->{waypoints}
 }
 
-=head2 C<add_waypoint( waypoint ... )>
+=over 4
 
-Add one or more waypoints. Each waypoint must be a reference to a
-hash. Each waypoint must include the keys C<lat> and C<lon> and may
-include others:
+=item add_waypoint( \%point [, \%point, … ] )
 
-  my $wpt = {
-    lat         => 54.786989,
-    lon         => -2.344214,
-    ele         => 512,
-    time        => 1164488503,
-    magvar      => 0,
-    geoidheight => 0,
-    name        => 'My house & home',
-    cmt         => 'Where I live',
-    desc        => '<<Chez moi>>',
-    src         => 'Testing',
-    link        => {
-      href => 'http://hexten.net/',
-      text => 'Hexten',
-      type => 'Blah'
-    },
-    sym           => 'pin',
-    type          => 'unknown',
-    fix           => 'dgps',
-    sat           => 3,
-    hdop          => 10,
-    vdop          => 10,
-    pdop          => 10,
-    ageofdgpsdata => 45,
-    dgpsid        => 247
-  };
+Add one or more waypoints. Each waypoint must be either a L<Geo::Gpx::Point> or a hash reference with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
 
-  $gpx->add_waypoint( $wpt );
+  %point = ( lat => 54.786989, lon => -2.344214, ele => 512, time => 1164488503, name => 'My house', desc => 'There\'s no place like home' );
+  $gpx->add_waypoint( \%point );
 
-Time values may either be an epoch offset or a L<DateTime>. If you wish
-to specify the timezone use a L<DateTime>.
+    or
+
+  $pt = Geo::Gpx::Point->new( %point );
+  $gpx->add_waypoint( $pt );
+
+Time values may either be an epoch offset or a L<DateTime>. If you wish to specify the timezone use a L<DateTime>. (This behaviour may change in the future.)
+
+=back
 
 =cut
 
@@ -479,9 +436,15 @@ sub _iterate_iterators {
    }
 }
 
-=head2 C<iterate_waypoints()>
+=over 4
 
-Get an iterator that visits all the waypoints in a C<Geo::Gpx>.
+=item iterate_waypoints()
+
+=item iterate_trackpoints()
+
+=item iterate_routepoints()
+
+Get an iterator for all of the waypoints, trackpoints, or routepoints in a C<Geo::Gpx> instance, as per the iterator chosen.
 
 =cut
 
@@ -489,12 +452,6 @@ sub iterate_waypoints {
   my $self = shift;
   return _iterate_points( $self->{waypoints} );
 }
-
-=head2 C<iterate_routepoints()>
-
-Get an iterator that visits all the routepoints in a C<Geo::Gpx>.
-
-=cut
 
 sub iterate_routepoints {
   my $self = shift;
@@ -509,12 +466,6 @@ sub iterate_routepoints {
   return _iterate_iterators( @iter );
 
 }
-
-=head2 C<iterate_trackpoints()>
-
-Get an iterator that visits all the trackpoints in a C<Geo::Gpx>.
-
-=cut
 
 sub iterate_trackpoints {
   my $self = shift;
@@ -533,14 +484,16 @@ sub iterate_trackpoints {
   return _iterate_iterators( @iter );
 }
 
-=head2 C<iterate_points()>
+=item iterate_points()
 
-Get an iterator that visits all the points in a C<Geo::Gpx>. For example
+Get an iterator for all of the points in a C<Geo::Gpx> instance, including waypoints, trackpoints, and routepoints.
 
   my $iter = $gpx->iterate_points();
   while ( my $pt = $iter->() ) {
     print "Point: ", join( ', ', $pt->{lat}, $pt->{lon} ), "\n";
   }
+
+=back
 
 =cut
 
@@ -554,10 +507,11 @@ sub iterate_points {
   );
 }
 
-=head2 C<bounds( [ $iterator ] )>
+=over 4
 
-Compute the bounding box of all the points in a C<Geo::Gpx> returning
-the result as a hash reference. For example:
+=item bounds( $iterator )
+
+Compute the bounding box of all the points in a C<Geo::Gpx> returning the result as a hash reference.
 
   my $gpx = Geo::Gpx->new( xml => $some_xml );
   my $bounds = $gpx->bounds();
@@ -571,7 +525,7 @@ returns a structure like this:
     maxlon => -1.230902
   };
 
-C<$iterator> defaults to C<$self-E<gt>iterate_points>.
+C<$iterator> defaults to C<$self-E<gt>iterate_points> if not specified.
 
 =cut
 
@@ -681,23 +635,11 @@ sub _cmp_ver {
   return @v1 <=> @v2;
 }
 
-=head2 C<xml( [ $version ] )>
+=item xml( $version )
 
-Generate GPX XML.
+Generate and return an XML string representation of the instance.
 
-  my $gpx10 = $gpx->xml( '1.0' );
-  my $gpx11 = $gpx->xml( '1.1' );
-
-If the version is omitted it defaults to the value of the C<version>
-attribute. Parsing a GPX document sets the version. If the C<version>
-attribute is unset defaults to 1.0.
-
-C<Geo::Gpx> version 0.10 used L<Geo::Cache> to render each of the
-points. L<Geo::Cache> generates a number of hardwired values to suit the
-original application of that module which aren't appropriate for general
-purpose GPX manipulation. Legacy mode is triggered by passing a list of
-L<Geo::Cache> points to the constructor; this should probably be avoided
-for new applications.
+If the version is omitted it defaults to the value of the C<version> attribute. Parsing a GPX document sets the version. If the C<version> attribute is unset defaults to 1.0.
 
 =cut
 
@@ -800,10 +742,9 @@ sub xml {
   return join( '', @ret );
 }
 
-=head2 C<TO_JSON>
+=item TO_JSON
 
-For compatibility with L<JSON> modules. Converts this object to a hash
-with keys that correspond to the above methods. Generated ala:
+For compatibility with L<JSON> modules. Convert this object to a hash with keys that correspond to the above methods. Generated ala:
 
   my %json = map { $_ => $self->$_ }
    qw(name desc author keywords copyright
@@ -811,6 +752,8 @@ with keys that correspond to the above methods. Generated ala:
   $json{bounds} = $self->bounds( $iter );
 
 With one difference: the keys will only be set if they are defined.
+
+=back
 
 =cut
 
@@ -829,22 +772,10 @@ sub TO_JSON {
 
 #### Legacy methods from 0.10
 
-=head2 C<gpx>
-
-Synonym for C<xml()>. Provided for compatibility with version 0.10.
-
-=cut
-
 sub gpx {
   my $self = shift;
   return $self->xml( @_ );
 }
-
-=head2 C<loc>
-
-Provided for compatibility with version 0.10.
-
-=cut
 
 sub loc {
   my $self = shift;
@@ -863,12 +794,6 @@ sub loc {
   return join( '', @ret );
 }
 
-=head2 C<gpsdrive>
-
-Provided for compatibility with version 0.10.
-
-=cut
-
 sub gpsdrive {
   my $self = shift;
   my @ret  = ();
@@ -882,283 +807,93 @@ sub gpsdrive {
   return join( '', @ret );
 }
 
-1;
-__END__
+=head2 Accessors
 
-=head2 C<name( [ $newname ] )>
+=over 4
 
-Accessor for the <name> element of a GPX. To get the name:
+=item name( $str )
 
-  my $name = $gpx->name();
+=item desc( $str )
 
-and to set it:
+=item copyright( $str )
 
-  $gpx->name( 'My big adventure' );
+=item keywords( $aref )
 
-=head2 C<desc( [ $newdesc ] )>
+Accessors to get or set the C<name>, C<desc>, C<copyright>, or C<keywords> fields of the C<Geo::Gpx> instance.
 
-Accessor for the <desc> element of a GPX. To get the the description:
+=item author( $href )
 
-  my $desc = $gpx->desc();
-
-and to set it:
-
-  $gpx->desc('Got lost, wandered around for ages, got cold, got hungry.');
-
-=head2 C<author( [ $newauthor ] )>
-
-Accessor for the author structure of a GPX. The author information is stored
-in a hash that reflects the structure of a GPX 1.1 document:
-
-  my $author = $gpx->author();
-  $author = {
-    link => {
-      text => 'Hexten',
-      href => 'http://hexten.net/'
-    },
-    email => {
-      domain => 'hexten.net',
-      id => 'andy'
-    },
-    name => 'Andy Armstrong'
+The author information is stored in a hash that reflects the structure of a GPX 1.1 document. To set it, supply a hash reference as (C<link> and C<email> are optional):
+  {
+    link  => { text => 'Hexten', href => 'http://hexten.net/' },
+    email => { domain => 'hexten.net', id => 'andy' },
+    name  => 'Andy Armstrong'
   },
 
-When setting the author data a similar structure must be supplied:
+=item link( $href )
 
-  $gpx->author({
-    name => 'Me!'
-  });
+The link is stored similarly to the author information, it can be set by supplying a hash reference as:
+  { link  => { text => 'Hexten', href => 'http://hexten.net/' } }
 
-The bizarre encoding of email addresses as id and domain is a
-feature of GPX.
+=item time( $epoch or $DateTime )
 
-=head2 C<time( [ $newtime ] )>
+Accessor for the <time> element of a GPX. The time is converted to a Unix epoch time when a GPX document is parsed unless the C<use_datetime> option is specified in which case times will be represented as L<DateTime> objects.
 
-Accessor for the <time> element of a GPX. The time is converted to a
-Unix epoch time when a GPX document is parsed unless the C<use_datetime>
-option is specified in which case times will be represented as
-L<DateTime> objects.
+When setting the time you may supply either an epoch time or a L<DateTime> object.
 
-When setting the time you may supply either an epoch time or a
-L<DateTime> object.
+=item routes( $aref )
 
-=head2 C<keywords( [ $newkeywords ] )>
+Return an array reference containing the routes of the instance. In the future, methods will be provided to set routes. In the meantime, to set the routes of the GPX instance, supply an array of hash references structured as:
 
-Access for the <keywords> element of a GPX. Keywords are stored as an
-array reference:
-
-  $gpx->keywords(['bleak', 'cold', 'scary']);
-  my $k = $gpx->keywords();
-  print join(', ', @{$k}), "\n";
-
-prints
-
-  bleak, cold, scary
-
-=head2 C<copyright( [ $newcopyright ] )>
-
-Access for the <copyright> element of a GPX.
-
-  $gpx->copyright('(c) You Know Who');
-  print $gpx->copyright(), "\n";
-
-prints
-
-  You Know Who
-
-=head2 C<link>
-
-Accessor for the <link> element of a GPX. Links are stored in a hash
-like this:
-
-  $link = {
-    'text' => 'Hexten',
-    'href' => 'http://hexten.net/'
-  };
-
-For example:
-
-  $gpx->link({ href => 'http://google.com/', text => 'Google' });
-
-=head2 C<waypoints( [ $newwaypoints ] )>
-
-Accessor for the waypoints array of a GPX. Each waypoint is a hash
-(which may also be a L<Geo::Cache> instance in legacy mode):
-
-  my $wpt = {
-    # All standard GPX fields
-    lat           => 54.786989,
-    lon           => -2.344214,
-    ele           => 512,
-    time          => 1164488503,
-    magvar        => 0,
-    geoidheight   => 0,
-    name          => 'My house & home',
-    cmt           => 'Where I live',
-    desc          => '<<Chez moi>>',
-    src           => 'Testing',
-    link          => {
-      href => 'http://hexten.net/',
-      text => 'Hexten',
-      type => 'Blah'
+  my $aref = [
+    { 'name' => 'Route 1',
+      'points' => [ <list_of_Geo_Gpx_Point> ]
     },
-    sym           => 'pin',
-    type          => 'unknown',
-    fix           => 'dgps',
-    sat           => 3,
-    hdop          => 10,
-    vdop          => 10,
-    pdop          => 10,
-    ageofdgpsdata => 45,
-    dgpsid        => 247
-  };
-
-All fields apart from C<lat> and C<lon> are optional. See the GPX
-specification for an explanation of the fields. The waypoints array is
-an anonymous array of such points:
-
-  $gpx->waypoints([ { lat => 57.0, lon => -2 },
-                    { lat => 57.2, lon => -2.1 } ]);
-
-=head2 C<routes( [ $newroutes ] )>
-
-Accessor for the routes array. The routes array is an array of hashes
-like this:
-
-  my $routes = [
-    {
-      'name' => 'Route 1'
-      'points' => [
-        {
-          'lat' => '54.3286193447719',
-          'name' => 'WPT1',
-          'lon' => '-2.38972155527137'
-        },
-        {
-          'lat' => '54.6634365629388',
-          'name' => 'WPT2',
-          'lon' => '-2.55373552512617'
-        },
-        {
-          'lat' => '54.7289259665049',
-          'name' => 'WPT3',
-          'lon' => '-3.05196861273443'
-        }
-      ],
+    { 'name' => 'Route 2',
+      'points' => [ <list_of_Geo_Gpx_Point> ]
     },
-    {
-      'name' => 'Route 2'
-      'points' => [
-        {
-          'lat' => '54.4165154835049',
-          'name' => 'WPT4',
-          'lon' => '-2.56153453279676'
-        },
-        {
-          'lat' => '54.6670126167344',
-          'name' => 'WPT5',
-          'lon' => '-2.69526089464403'
-        }
-      ],
-    }
   ];
 
-  $gpx->routes($routes);
+=item tracks( $aref )
 
-Each of the points in a route may have any of the attributes that are
-legal for a waypoint.
+Returns an array reference containing the routes of the instance. In the future, methods will be provided to set tracks. In the meantime, to set the tracks of the GPX instance, supply an array of hash references structured as:
 
-=head2 C<tracks( [ $newtracks ] )>
-
-Accessor for the tracks array. The tracks array is an array of hashes
-like this:
-
-  my $tracks = [
-    {
-      'name' => 'Track 1',
+  my $aref = [
+    { 'name' => 'Track 1',
       'segments' => [
-        {
-          'points' => [
-            {
-              'lat' => '54.5182217145253',
-              'lon' => '-2.62191579018834'
-            },
-            {
-              'lat' => '54.1507759448355',
-              'lon' => '-3.05774931478646'
-            },
-            {
-              'lat' => '54.6016296784874',
-              'lon' => '-3.40418920968631'
-            }
-          ]
-        },
-        {
-          'points' => [
-            {
-              'lat' => '54.6862790450185',
-              'lon' => '-3.68760108982739'
-            }
-          ]
-        }
+        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
+        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
       ]
-    },
-    {
-      'name' => 'Track 2',
+    }
+    { 'name' => 'Track 2',
       'segments' => [
-        {
-          'points' => [
-            {
-              'lat' => '54.9927807628549',
-              'lon' => '-4.04712811256436'
-            },
-            {
-              'lat' => '55.1148395198045',
-              'lon' => '-4.33623533555793'
-            },
-            {
-              'lat' => '54.6214174046189',
-              'lon' => '-4.26293674042878'
-            },
-            {
-              'lat' => '55.0540816059084',
-              'lon' => '-4.42261020671926'
-            },
-            {
-              'lat' => '55.4451622411372',
-              'lon' => '-4.32873765338'
-            }
-          ]
-        }
+        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
+        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
       ]
     }
   ];
 
-=head2 C<version( [ $newversion ] )>
+=item version()
 
-Accessor for the schema version of a GPX document. Versions 1.0 and 1.1
-are supported.
+Returns the schema version of a GPX document. Versions 1.0 and 1.1 are supported.
 
-  print $gpx->version();
+=back
 
-prints
+=head2 Legacy methods provided for compatibility
 
-  1.0
+These methods will likely removed soon as they reflect a very dated release of this module.
 
-=head1 DIAGNOSTICS
+=over 4
 
-=over
+=item gpx()
 
-=item C<< Invalid arguments >>
+Synonym for C<xml()>.
 
-Invalid arguments passed to C<new()>.
+=item gpsdrive()
 
-=item C<< Undefined accessor method: %s >>
+=item loc()
 
-The various accessor methods are implemented as an AUTOLOAD handler.
-This error is thrown if an attempt is made to call an accessor other
-than C<name>, C<desc>, C<author>, C<time>, C<keywords>, C<copyright>,
-C<link>, C<waypoints>, C<tracks>, C<routes> or C<version>.
+Provided for compatibility with version 0.10.
 
 =back
 
@@ -1187,39 +922,25 @@ Originally by Rich Bowen C<< <rbowen@rcbowen.com> >> and Andy Armstrong  C<< <an
 
 This version by Patrick Joly C<< <patjol@cpan.org> >>.
 
+Please visit the project page at: L<https://github.com/patjoly/geo-gpx>.
+
 =head1 VERSION
 
 1.03
 
-=head1 LICENCE AND COPYRIGHT
+=head1 LICENSE AND COPYRIGHT
 
-Copyright (c) 2004-2022, Andy Armstrong C<< <andy@hexten.net> >>, Patrick Joly C<< patjol@cpan.org >>. All
-rights reserved.
+Copyright (c) 2004-2022, Andy Armstrong C<< <andy@hexten.net> >>, Patrick Joly C<< patjol@cpan.org >>. All rights reserved.
 
-This module is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself. See L<perlartistic>.
+This module is free software; you can redistribute it and/or modify it under the same terms as Perl itself. See L<perlartistic>.
 
 =head1 DISCLAIMER OF WARRANTY
 
-BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
-FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN
-OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
-PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER
-EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE
-ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH
-YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL
-NECESSARY SERVICING, REPAIR, OR CORRECTION.
+BECAUSE THIS SOFTWARE IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY FOR THE SOFTWARE, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES PROVIDE THE SOFTWARE "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH YOU. SHOULD THE SOFTWARE PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING, REPAIR, OR CORRECTION.
 
-IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
-WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR
-REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENCE, BE
-LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL,
-INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR
-INABILITY TO USE THE SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF
-DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR
-THIRD PARTIES OR A FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER
-SOFTWARE), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGES.
+IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY AND/OR REDISTRIBUTE THE SOFTWARE AS PERMITTED BY THE ABOVE LICENSE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY GENERAL, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE SOFTWARE (INCLUDING BUT NOT LIMITED TO LOSS OF DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD PARTIES OR A FAILURE OF THE SOFTWARE TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 =cut
+
+1;
+
