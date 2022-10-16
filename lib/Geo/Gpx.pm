@@ -12,6 +12,8 @@ use HTML::Entities qw( encode_entities encode_entities_numeric );
 use Scalar::Util qw( blessed );
 use Time::Local;
 use XML::Descent;
+use File::Basename;
+use Cwd qw(cwd abs_path);
 use Geo::Gpx::Point;
 
 =encoding utf8
@@ -167,11 +169,16 @@ sub _init_shiny_new {
 
 =over 4
 
-=item new( args [, use_datetime => true/false )
+=item new( args [, use_datetime => $bool, work_dir => $working_directory )
 
 Create and return a new C<Geo::Gpx> instance based on an array of points that can each be constructed as L<Geo::Gpx::Point> objects or with a supplied XML file handle or XML string.
 
 If C<use_datetime> is set to true, time values in parsed GPX will be L<DateTime> objects rather than epoch times. (This option may be disabled in the future in favour of a method that can return a L<DateTime> object from a specified point.)
+
+C<work_dir> or C<wd> for short can be set to specify where to save any working files (such as with the save_laps() method). The module never actually L<chdir>'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
+
+The working directory can be supplied as a relative (to L<Cwd::cwd>) or absolute path but is internally stored by C<set_wd()> as a full path. If C<work_dir> is ommitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle.
+
 
 =back
 
@@ -195,16 +202,25 @@ sub new {
     $self->_init_shiny_new( \%args );
 
     if ( exists $args{input} ) {
-      $self->_parse( $args{input} );
+        my ($fh, $arg);
+        $arg = $args{input};
+        $arg =~ s/~/$ENV{'HOME'}/ if $arg =~ /^~/;
+        if (-f $arg) {
+            open( $fh , '<', $arg ) or  die "can't open file $arg $!";
+            $self->_parse( $fh );
+            # Once I have copied that method
+            $self->set_filename($arg);
+        } else { $self->_parse( $args{input} ) }
     }
     elsif ( exists $args{xml} ) {
       $self->_parse( \$args{xml} );
     }
+    $self->set_wd( $args{work_dir} || $args{wd} );
   }
   else {
     croak( "Invalid arguments" );
   }
-
+  # Once I have copied that method, and capured that option above
   return $self;
 }
 
@@ -769,6 +785,130 @@ sub TO_JSON {
   }
   return \%json;
 }
+
+=over 4
+
+=item save( filename => $fname, force => $bool, encoding => $enc )
+
+Saves the C<Geo::Gpx> instance as a file.
+
+All fields are optional unless the instance was created without a filename (i.e with an XML string or a filehandle) and C<set_filename()> has not been called yet. If the filename is a relative path, the file will be saved in the instance's working directory (not the caller's, C<Cwd>).
+
+C<encoding> can be either C<utf-8> (the default) or C<latin1>.
+
+=back
+
+=cut
+
+sub save {
+    my ($o, %opts) = @_;
+    my ($fh, $fname, $xml_string);
+    if ( $opts{filename} ) { $fname = $o->set_filename( $opts{filename} ) }
+    else { $fname = $o->set_filename() }
+    croak "$fname already exists" if -f $fname and !$opts{force};
+
+    $xml_string = $o->xml;
+    if (defined ($opts{encoding}) and ( $opts{encoding} eq 'latin1') ) {
+        open( $fh, ">:encoding(latin1)", $fname) or  die "can't open file $fname: $!";
+    } else {
+        open( $fh, ">:encoding(utf-8)", $fname)  or  die "can't open file $fname: $!";
+    }
+    print $fh $xml_string
+}
+
+=over 4
+
+=item set_filename( $filename )
+
+Sets/gets the filename. Returns the name of the file with the complete path.
+
+=back
+
+=cut
+
+sub set_filename {
+    my ($o, $fname) = (shift, shift);
+    return $o->{_fileABSOLUTENAME} unless $fname;
+    croak 'set_filename() takes only a single name as argument' if @_;
+    my $wd;
+    if ($o->_is_wd_defined) { $wd = $o->set_wd }
+    # set_filename gets called before set_wd by new() so can't access work_dir until initialized
+
+    my ($name, $path, $ext);
+    ($name, $path, $ext) = fileparse( $fname, '\..*' );
+    if ($wd) {
+        if ( ! ($fname =~ /^\// ) ) {
+            # ie if fname is not an abolsute path, adjust $path to be relative to work_dir
+            ($name, $path, $ext) = fileparse( $wd . $fname, '\..*' )
+        }
+    }
+    $o->{_fileABSOLUTEPATH} = abs_path( $path ) . '/';
+    $o->{_fileABSOLUTENAME} = $o->{_fileABSOLUTEPATH} . $name . $ext;
+    croak 'directory ' . $o->{_fileABSOLUTEPATH} . ' doesn\'t exist' unless -d $o->{_fileABSOLUTEPATH};
+    $o->{_fileNAME} = $name;
+    $o->{_filePATH} = $path;
+    $o->{_fileEXT} = $ext;
+    $o->{_filePARSEDNAME} = $fname;
+    # _file* keys only for debugging, should not be used anywhere else
+    return $o->{_fileABSOLUTENAME}
+}
+
+=over 4
+
+=item set_wd( $folder )
+
+Sets/gets the working directory and checks the validity of that path. Relative paths are supported for setting but only full paths are returned or internally stored.
+
+The previous working directory is also stored in memory; can call <set_wd('-')> to switch back and forth between two directories.
+
+Note that it does not call L<chdir>, it simply sets the path for the eventual saving of files.
+
+=back
+
+=cut
+
+sub set_wd {
+    my ($o, $dir) = (shift, shift);
+    croak 'set_wd() takes only a single folder as argument' if @_;
+    my $first_call = ! $o->_is_wd_defined;  # ie if called for 1st time -- at construction by new()
+
+    if (! $dir) {
+        return $o->{work_dir} unless $first_call;
+        my $fname = $o->set_filename;
+        if ($fname) {
+            my ($name, $path, $ext) = fileparse( $fname );
+            $o->set_wd( $path )
+        } else { $o->set_wd( cwd )  }
+    } else {
+        $dir =~ s/^\s+|\s+$//g;                 # some clean-up
+        $dir =~ s/~/$ENV{'HOME'}/ if $dir =~ /^~/;
+        $dir = $o->_set_wd_old    if $dir eq '-';
+
+        if ($dir =~ m,^[^/], ) {                # convert rel path to full
+            $dir =  $first_call ? cwd . '/' . $dir : $o->{work_dir} . $dir
+        }
+        $dir =~ s,/*$,/,;                       # some more cleaning
+        1 while ( $dir =~ s,/\./,/, );          # support '.'
+        1 while ( $dir =~ s,[^/]+/\.\./,, );    # and '..'
+        croak "$dir not a valid directory" unless -d $dir;
+
+        if ($first_call) { $o->_set_wd_old( $dir ) }
+        else {             $o->_set_wd_old( $o->{work_dir} ) }
+        $o->{work_dir} = $dir
+    }
+    return $o->{work_dir}
+}
+
+# if ($o->set_filename) { $o->set_wd() }      # if we have a filename
+# else {                  $o->set_wd( cwd ) } # if we don't
+
+sub _set_wd_old {
+    my ($o, $dir) = @_;
+    $o->{work_dir_old} = $dir if $dir;
+    return $o->{work_dir_old}
+}
+
+sub _is_wd_defined { return defined shift->{work_dir} }
 
 #### Legacy methods from 0.10
 

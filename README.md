@@ -19,11 +19,15 @@ Geo::Gpx - Create and parse GPX files
 
 ## Constructor
 
-- new( args \[, use\_datetime => true/false )
+- new( args \[, use\_datetime => $bool, work\_dir => $working\_directory )
 
     Create and return a new `Geo::Gpx` instance based on an array of points that can each be constructed as [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint) objects or with a supplied XML file handle or XML string.
 
     If `use_datetime` is set to true, time values in parsed GPX will be [DateTime](https://metacpan.org/pod/DateTime) objects rather than epoch times. (This option may be disabled in the future in favour of a method that can return a [DateTime](https://metacpan.org/pod/DateTime) object from a specified point.)
+
+    `work_dir` or `wd` for short can be set to specify where to save any working files (such as with the save\_laps() method). The module never actually [chdir](https://metacpan.org/pod/chdir)'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
+
+    The working directory can be supplied as a relative (to [Cwd::cwd](https://metacpan.org/pod/Cwd%3A%3Acwd)) or absolute path but is internally stored by `set_wd()` as a full path. If `work_dir` is ommitted, it is set based on the path of the _$filename_ supplied or the current working directory if the constructor is called with an XML string or a filehandle.
 
 ## Methods
 
@@ -96,6 +100,26 @@ Geo::Gpx - Create and parse GPX files
         $json{bounds} = $self->bounds( $iter );
 
     With one difference: the keys will only be set if they are defined.
+
+- save( filename => $fname, force => $bool, encoding => $enc )
+
+    Saves the `Geo::Gpx` instance as a file.
+
+    All fields are optional unless the instance was created without a filename (i.e with an XML string or a filehandle) and `set_filename()` has not been called yet. If the filename is a relative path, the file will be saved in the instance's working directory (not the caller's, `Cwd`).
+
+    `encoding` can be either `utf-8` (the default) or `latin1`.
+
+- set\_filename( $filename )
+
+    Sets/gets the filename. Returns the name of the file with the complete path.
+
+- set\_wd( $folder )
+
+    Sets/gets the working directory and checks the validity of that path. Relative paths are supported for setting but only full paths are returned or internally stored.
+
+    The previous working directory is also stored in memory; can call &lt;set\_wd('-')> to switch back and forth between two directories.
+
+    Note that it does not call [chdir](https://metacpan.org/pod/chdir), it simply sets the path for the eventual saving of files.
 
 ## Accessors
 
