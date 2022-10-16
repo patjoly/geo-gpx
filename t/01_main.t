@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 3;
+use Test::More tests => 4;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -25,10 +25,15 @@ $o->add_waypoint( $href_chez_kaz );
 #
 # Section A - Constructor
 
-# new(): from filename
-my $fname1 = 't/Larose.gpx';
-my $o_fn1 = Geo::Gpx->new( input => "$fname1" );
-isa_ok ($o_fn1,  'Geo::Gpx');
+# new(): from filename (file with only waypoints)
+my $fname_wpt1 = 't/larose_wpt.gpx';
+my $o_wpt_only1 = Geo::Gpx->new( input => "$fname_wpt1" );
+isa_ok ($o_wpt_only1,  'Geo::Gpx');
+
+# new(): from filename (file with only trackpoints)
+my $fname_trk1 = 't/larose_trk.gpx';
+my $o_trk_only1 = Geo::Gpx->new( input => "$fname_trk1" );
+isa_ok ($o_trk_only1,  'Geo::Gpx');
 
 #
 # Section B - Object Methods
