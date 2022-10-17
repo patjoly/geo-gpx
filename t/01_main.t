@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 4;
+use Test::More tests => 5;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -31,9 +31,14 @@ my $o_wpt_only1 = Geo::Gpx->new( input => "$fname_wpt1" );
 isa_ok ($o_wpt_only1,  'Geo::Gpx');
 
 # new(): from filename (file with only trackpoints)
-my $fname_trk1 = 't/larose_trk.gpx';
+my $fname_trk1 = 't/larose_trk1.gpx';
 my $o_trk_only1 = Geo::Gpx->new( input => "$fname_trk1" );
 isa_ok ($o_trk_only1,  'Geo::Gpx');
+my $fname_trk2 = 't/larose_trk2.gpx';
+my $o_trk_only2 = Geo::Gpx->new( input => "$fname_trk2" );
+isa_ok ($o_trk_only2,  'Geo::Gpx');
+
+# NextSteps: create a new empty gpx file, add the waypoints, add a track, then add another track (do we have a method to add another track like add_waypoint()
 
 #
 # Section B - Object Methods
