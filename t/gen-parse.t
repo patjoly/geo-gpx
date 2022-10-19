@@ -145,7 +145,9 @@ my @trk = (
   }
 );
 
-$gpx->tracks( \@trk );
+# $gpx->tracks( \@trk );
+# ... tracks is no longer an AUTOLOAD
+$gpx->{tracks} = \@trk;
 
 $gpx->name( 'Test' );
 $gpx->desc( 'Test data' );

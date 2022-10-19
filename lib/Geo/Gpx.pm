@@ -76,7 +76,7 @@ my @ATTR;
 
 BEGIN {
   @META = qw( name desc author time keywords copyright link );
-  @ATTR = qw( tracks routes version );
+  @ATTR = qw( routes version );
 
   # Generate accessors
   for my $attr ( @META, @ATTR ) {
@@ -178,7 +178,6 @@ If C<use_datetime> is set to true, time values in parsed GPX will be L<DateTime>
 C<work_dir> or C<wd> for short can be set to specify where to save any working files (such as with the save_laps() method). The module never actually L<chdir>'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
 
 The working directory can be supplied as a relative (to L<Cwd::cwd>) or absolute path but is internally stored by C<set_wd()> as a full path. If C<work_dir> is ommitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle.
-
 
 =back
 
@@ -362,6 +361,26 @@ sub _parse {
   $p->walk();
 }
 
+=over 4
+
+=item clone()
+
+Returns a deep copy of a C<Geo::Gpx> instance.
+
+  $clone = $self->clone;
+
+=back
+
+=cut
+
+sub clone {
+    my $clone;
+    eval(Data::Dumper->Dump([ shift ], ['$clone']));
+    confess $@ if $@;
+    return $clone
+}
+# actually it can clone anything
+
 =head2 Methods
 
 =over 4
@@ -370,7 +389,7 @@ sub _parse {
 
 Initialize waypoints based on an array reference containing either a list of L<Geo::Gpx::Point>s or hash references with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
 
-Returns the array reference of L<Geo::Gpx::Points> stored as waypoints.
+Returns the array reference of L<Geo::Gpx::Points> stored as waypoints. Can call C<$self->waypoints()> without argument in scalar context to obtain the number of waypoints.
 
 =back
 
@@ -406,6 +425,8 @@ Time values may either be an epoch offset or a L<DateTime>. If you wish to speci
 
 =cut
 
+# rename this method soon
+# sub waypoints_add {
 sub add_waypoint {
   my $self = shift;
 
@@ -419,6 +440,91 @@ sub add_waypoint {
 
     push @{ $self->{waypoints} }, Geo::Gpx::Point->new( %$wpt );
   }
+  #TODO: Should return 1
+}
+
+=over 4
+
+=item tracks( integer or name => 'name' )
+
+Returns the array reference of tracks when called without argument. Optionally accepts a single integer refering to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
+
+Call C<$self->tracks()> without arguments in scalar context to obtain the number of tracks.
+
+=back
+
+=cut
+
+# @args % 2 == 0 ) {
+sub tracks {
+    my $o= shift;
+    return $o->{tracks} unless @_;
+    my $track;
+    if (@_ == 2) {
+        for my $t ( @{ $o->{tracks} } ) {
+            $track = $t if $t->{$_[0]} eq $_[1]
+        }
+        croak "no track named $_[1] in track list" unless $track
+    } else {
+        $track = $o->{tracks}[($_[0] - 1)];
+        croak "track $_[0] not found" unless $track
+    }
+    return $track
+}
+
+=over 4
+
+=item tracks_add( $track or $points_aref [, $points_aref, … ], name => $track_name )
+
+Add a track to a C<Geo::Gpx> object. The I<$track> is expected to be an existing track (i.e. a hash ref). Returns true.
+
+A new track can also be created based an array reference(s) of L<Geo::Gpx::Point> objects and added to the C<Geo::Gpx> instance. If more than one array reference is supplied, the resulting track will contain as many segments as the number of aref's provided.
+
+C<name> and all other meta fields supported by tracks can be provided and will overwrite any existing fields in I<$track>.
+
+=back
+
+=cut
+
+sub tracks_add {
+    my $o = shift;
+    my ($track, @arefs);
+
+    my @args = @_;
+    for (@args) {
+        if ( ref($_) eq 'HASH' ) {
+            $track = shift
+        } elsif ( ref($_) eq 'ARRAY' ) {
+            push @arefs, shift
+        }
+    }
+    my %opts = @_;
+
+    # Q: do we need to check that $o->{tracks} does not already contain a track of the same name?
+    # - if so we would do here (unless not yet possible) but it's relevant to method way of adding a track
+    # Q: is the name key mandatory? check the schema
+
+    my $c;
+    if (@arefs) {
+        croak 'arguments to tracks_add() contain both an existing track and an array reference of points, please specify only one kind of reference' if $track;
+
+        # NB: not yet ready for prime time
+        $track = { 'name' => $opts{name}, 'segments' => [] };
+        for my $i (0 .. $#arefs) {
+            my $points = $arefs[$i];
+            push @{ $track->{segments}[$i]{points} }, $points;
+            # if this push is tricky, try with just [] instead of $points and see if the has looks like it has the right structure
+            # push @{ $track->{segments}[$i]{points} },  [];
+        }
+    } else {
+        croak 'tracks_add() expects an existing track or an array reference as argument' unless $track
+    }
+    $c = clone( $track );
+    for (keys %opts) {
+        $c->{$_} = $opts{$_}        # need to check the $_ are legal
+    }
+    push @{ $o->{tracks} }, $c;
+    return 1
 }
 
 # Not a method
@@ -776,7 +882,7 @@ With one difference: the keys will only be set if they are defined.
 sub TO_JSON {
   my $self = shift;
   my %json;    #= map {$_ => $self->$_} ...
-  for my $key ( @META, @ATTR, qw/ waypoints / ) {
+  for my $key ( @META, @ATTR, qw/ waypoints tracks / ) {
     my $val = $self->$key;
     $json{$key} = $val if defined $val;
   }
