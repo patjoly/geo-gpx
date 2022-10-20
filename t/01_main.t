@@ -49,13 +49,43 @@ my $pt = Geo::Gpx::Point->new( %point );
 $pt->sym('Triangle, Blue');
 $o->add_waypoint( $pt );
 
-# tracks_add(): test also with aref's
-$DB::single = 1;
+# tracks_add():
 my $track1 = $o_trk_only1->tracks( 1 );
 my $track2 = $o_trk_only2->tracks( 1 );
 $o_wpt_only1->tracks_add( $track1, name => 'My first track' );
 $o_wpt_only1->tracks_add( $track2, name => 'A second track' );
 my $get_track = $o_wpt_only1->tracks( name => 'A second track' );
+
+# tracks_add(): test also with aref's
+my $aref1 = [
+    { lat => 45.405441, lon => -75.137497,  ele => -0.301, time => '2020-10-25T21:34:31Z' },
+    { lat => 45.405291, lon => -75.137528,  ele => -0.098, time => '2020-10-25T21:34:35Z' },
+    { lat => 45.405147, lon => -75.137508,  ele => -0.233, time => '2020-10-25T21:34:38Z' },
+    { lat => 45.405050, lon => -75.137655,  ele => -0.512, time => '2020-10-25T21:34:41Z' },
+    { lat => 45.404993, lon => -75.137781,  ele => -0.108, time => '2020-10-25T21:34:43Z' },
+];
+my $aref2 = [
+    { lat => 45.404952, lon => -75.137896,  ele =>  0.057, time => '2020-10-25T21:34:45Z' },
+    { lat => 45.405009, lon => -75.138072,  ele => -0.518, time => '2020-10-25T21:34:48Z' },
+    { lat => 45.405023, lon => -75.138386,  ele => -0.613, time => '2020-10-25T21:34:53Z' },
+    { lat => 45.405017, lon => -75.138450,  ele => -0.442, time => '2020-10-25T21:34:54Z' },
+    { lat => 45.405042, lon => -75.138751,  ele => -0.704, time => '2020-10-25T21:34:59Z' },
+];
+my $aref3 = [
+    { lat => 45.405051, lon => -75.138798,  ele => -0.656, time => '2020-10-25T21:35:00Z' },
+    { lat => 45.405025, lon => -75.139096,  ele => -0.164, time => '2020-10-25T21:35:05Z' },
+    { lat => 45.405061, lon => -75.139310,  ele => -0.205, time => '2020-10-25T21:35:10Z' },
+    { lat => 45.405020, lon => -75.139528,  ele => -0.242, time => '2020-10-25T21:35:15Z' },
+    { lat => 45.404974, lon => -75.139638,  ele => -0.047, time => '2020-10-25T21:35:19Z' },
+];
+my $o_ta1 = Geo::Gpx->new();
+my $o_ta2 = Geo::Gpx->new();
+$o_ta1->tracks_add( $aref1, name => 'A track with one segment' );
+$o_ta2->tracks_add( $aref2, $aref3, name => 'Two segments near the end of the trail' );
+
+$o_ta1->routes_add( $aref2, name => 'My first route' );
+my @rtes = $o_ta1->routes();
+
 
 # save(): a few saves
 $o->set_wd( $tmp_dir );
@@ -65,8 +95,9 @@ $o_wpt_only1->set_wd( $tmp_dir );
 $o_wpt_only1->save( filename => 'test_save_wpt_and_track.gpx', force => 1);
 $o_wpt_only1->set_wd( '-' );
 
+$DB::single = 1;
 # save() - new instance based on saved file
-my $saved_then_read  = Geo::Gpx->new( input => 't/test.gpx');
+my $saved_then_read  = Geo::Gpx->new( input => $tmp_dir . '/test_save.gpx' );
 isa_ok ($saved_then_read,  'Geo::Gpx');
 
 $DB::single = 1;

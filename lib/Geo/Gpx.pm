@@ -76,7 +76,7 @@ my @ATTR;
 
 BEGIN {
   @META = qw( name desc author time keywords copyright link );
-  @ATTR = qw( routes version );
+  @ATTR = qw( version );
 
   # Generate accessors
   for my $attr ( @META, @ATTR ) {
@@ -445,6 +445,80 @@ sub add_waypoint {
 
 =over 4
 
+=item routes( integer or name => 'name' )
+
+Returns the array reference of routes when called without argument. Optionally accepts a single integer refering to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
+
+Call C<$self->routes()> without arguments in scalar context to obtain the number of routes.
+
+=back
+
+=cut
+
+sub routes {
+    my $o= shift;
+    return $o->{routes} unless @_;
+    my $route;
+    if (@_ == 2) {
+        for my $t ( @{ $o->{routes} } ) {
+            $route = $t if $t->{$_[0]} eq $_[1]
+        }
+        croak "no route named $_[1] in route list" unless $route
+    } else {
+        $route = $o->{routes}[($_[0] - 1)];
+        croak "route $_[0] not found" unless $route
+    }
+    return $route
+}
+
+=over 4
+
+=item routes_add( $route or $points_aref [, name => $route_name )
+
+Add a route to a C<Geo::Gpx> object. The I<$route> is expected to be an existing route (i.e. a hash ref). Returns true. A new route can also be created based an array reference(s) of L<Geo::Gpx::Point> objects and added to the C<Geo::Gpx> instance.
+
+C<name> and all other meta fields supported by routes can be provided and will overwrite any existing fields in I<$route>.
+
+=back
+
+=cut
+
+sub routes_add {
+    my $o = shift;
+    my ($route, $aref);
+
+    my @args = @_;
+    for (@args) {
+        if ( ref($_) eq 'HASH' ) {
+            $route = shift
+        } elsif ( ref($_) eq 'ARRAY' ) {
+            $aref = shift
+        }
+    }
+    my %opts = @_;
+
+    my $c;
+    if ($aref) {
+        croak 'arguments to routes_add() contain both an existing route and an array reference of points, please specify only one kind of reference' if $route;
+        $route = { 'name' => 'Track' };
+
+        for my $pt (@$aref) {
+            my $is_geo_gpx_point = blessed $pt and $pt->isa('Geo::Gpx::Point');
+            $pt = Geo::Gpx::Point->new( %$pt ) unless $is_geo_gpx_point
+        }
+        $route->{points} = $aref
+    }
+    croak 'routes_add() expects an existing route or an array reference as argument' unless $route;
+    $c = clone( $route );
+    for (keys %opts) {
+        $c->{$_} = $opts{$_}        # need to check the $_ are legal
+    }
+    push @{ $o->{routes} }, $c;
+    return 1
+}
+
+=over 4
+
 =item tracks( integer or name => 'name' )
 
 Returns the array reference of tracks when called without argument. Optionally accepts a single integer refering to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
@@ -455,7 +529,6 @@ Call C<$self->tracks()> without arguments in scalar context to obtain the number
 
 =cut
 
-# @args % 2 == 0 ) {
 sub tracks {
     my $o= shift;
     return $o->{tracks} unless @_;
@@ -507,14 +580,15 @@ sub tracks_add {
     my $c;
     if (@arefs) {
         croak 'arguments to tracks_add() contain both an existing track and an array reference of points, please specify only one kind of reference' if $track;
+        $track = { 'name' => 'Track', 'segments' => [] };
 
-        # NB: not yet ready for prime time
-        $track = { 'name' => $opts{name}, 'segments' => [] };
         for my $i (0 .. $#arefs) {
             my $points = $arefs[$i];
-            push @{ $track->{segments}[$i]{points} }, $points;
-            # if this push is tricky, try with just [] instead of $points and see if the has looks like it has the right structure
-            # push @{ $track->{segments}[$i]{points} },  [];
+            for my $pt (@{$points}) {
+                my $is_geo_gpx_point = blessed $pt and $pt->isa('Geo::Gpx::Point');
+                $pt = Geo::Gpx::Point->new( %$pt ) unless $is_geo_gpx_point
+            }
+            $track->{segments}[$i]{points} = $points
         }
     } else {
         croak 'tracks_add() expects an existing track or an array reference as argument' unless $track
@@ -853,10 +927,16 @@ sub xml {
     push @ret, @meta;
   }
 
-  for my $k ( sort keys %XMLMAP ) {
+ my @existing_keys;        # waypoints should be generated first, applications like MapSource croak if not
+ for my $k ( sort keys %XMLMAP ) {
     if ( exists( $self->{$k} ) ) {
-      push @ret, $self->_xml( $k, $self->{$k}, $XMLMAP{$k} );
+        if ($k eq 'waypoints') { unshift @existing_keys, $k }
+        else { push @existing_keys, $k }
     }
+  }
+
+  for my $k ( @existing_keys ) {
+    push @ret, $self->_xml( $k, $self->{$k}, $XMLMAP{$k} );
   }
 
   push @ret, qq{</gpx>\n};
@@ -882,7 +962,7 @@ With one difference: the keys will only be set if they are defined.
 sub TO_JSON {
   my $self = shift;
   my %json;    #= map {$_ => $self->$_} ...
-  for my $key ( @META, @ATTR, qw/ waypoints tracks / ) {
+  for my $key ( @META, @ATTR, qw/ waypoints routes tracks / ) {
     my $val = $self->$key;
     $json{$key} = $val if defined $val;
   }
@@ -1086,38 +1166,6 @@ The link is stored similarly to the author information, it can be set by supplyi
 Accessor for the <time> element of a GPX. The time is converted to a Unix epoch time when a GPX document is parsed unless the C<use_datetime> option is specified in which case times will be represented as L<DateTime> objects.
 
 When setting the time you may supply either an epoch time or a L<DateTime> object.
-
-=item routes( $aref )
-
-Return an array reference containing the routes of the instance. In the future, methods will be provided to set routes. In the meantime, to set the routes of the GPX instance, supply an array of hash references structured as:
-
-  my $aref = [
-    { 'name' => 'Route 1',
-      'points' => [ <list_of_Geo_Gpx_Point> ]
-    },
-    { 'name' => 'Route 2',
-      'points' => [ <list_of_Geo_Gpx_Point> ]
-    },
-  ];
-
-=item tracks( $aref )
-
-Returns an array reference containing the routes of the instance. In the future, methods will be provided to set tracks. In the meantime, to set the tracks of the GPX instance, supply an array of hash references structured as:
-
-  my $aref = [
-    { 'name' => 'Track 1',
-      'segments' => [
-        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
-        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
-      ]
-    }
-    { 'name' => 'Track 2',
-      'segments' => [
-        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
-        { 'points' => [ <list_of_Geo_Gpx_Point> ] },
-      ]
-    }
-  ];
 
 =item version()
 

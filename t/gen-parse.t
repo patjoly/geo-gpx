@@ -129,7 +129,9 @@ my @rte = (
   }
 );
 
-$gpx->routes( \@rte );
+# $gpx->routes( \@trk );
+# ... routes no longer sets
+$gpx->{routes} = \@rte ;
 
 my @trk = (
   {
@@ -146,7 +148,7 @@ my @trk = (
 );
 
 # $gpx->tracks( \@trk );
-# ... tracks is no longer an AUTOLOAD
+# ... tracks no longer sets
 $gpx->{tracks} = \@trk;
 
 $gpx->name( 'Test' );
