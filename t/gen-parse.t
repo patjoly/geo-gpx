@@ -62,7 +62,7 @@ my @wpt = (
   }
 );
 
-$gpx->waypoints( \@wpt );
+$gpx->waypoints_add( @wpt );
 
 # Quick fix for dumbass dependency on RNG being the same everywhere
 my $rp = 0;

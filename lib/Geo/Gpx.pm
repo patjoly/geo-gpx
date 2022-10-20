@@ -385,39 +385,43 @@ sub clone {
 
 =over 4
 
-=item waypoints( \@waypoints )
+=item waypoints( integer or name => 'name' )
 
-Initialize waypoints based on an array reference containing either a list of L<Geo::Gpx::Point>s or hash references with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
-
-Returns the array reference of L<Geo::Gpx::Points> stored as waypoints. Can call C<$self->waypoints()> without argument in scalar context to obtain the number of waypoints.
+Returns the array reference of waypoints when called without argument. Optionally accepts a single integer refering to the waypoint number from waypoints aref (1-indexed) or a key value pair with the name of the waypoint to be returned.
 
 =back
 
 =cut
 
 sub waypoints {
-    my ($self, $aref) = @_;
-    return $self->{waypoints} unless $aref;
-    $self->{waypoints} = [];
-    for my $pt (@$aref) {
-        push @{ $self->{waypoints} }, Geo::Gpx::Point->new( %$pt )
+    my $o= shift;
+    return $o->{waypoints} unless @_;
+    my $waypoint;
+    if (@_ == 2) {
+        for my $t ( @{ $o->{waypoints} } ) {
+            $waypoint = $t if $t->{$_[0]} eq $_[1]
+        }
+        croak "no waypoint named $_[1] in waypoint list" unless $waypoint
+    } else {
+        $waypoint = $o->{waypoints}[($_[0] - 1)];
+        croak "waypoint $_[0] not found" unless $waypoint
     }
-    return $self->{waypoints}
+    return $waypoint
 }
 
 =over 4
 
-=item add_waypoint( \%point [, \%point, … ] )
+=item waypoints_add( \%point [, \%point, … ] )
 
 Add one or more waypoints. Each waypoint must be either a L<Geo::Gpx::Point> or a hash reference with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
 
   %point = ( lat => 54.786989, lon => -2.344214, ele => 512, time => 1164488503, name => 'My house', desc => 'There\'s no place like home' );
-  $gpx->add_waypoint( \%point );
+  $gpx->waypoints_add( \%point );
 
     or
 
   $pt = Geo::Gpx::Point->new( %point );
-  $gpx->add_waypoint( $pt );
+  $gpx->waypoints_add( $pt );
 
 Time values may either be an epoch offset or a L<DateTime>. If you wish to specify the timezone use a L<DateTime>. (This behaviour may change in the future.)
 
@@ -427,7 +431,7 @@ Time values may either be an epoch offset or a L<DateTime>. If you wish to speci
 
 # rename this method soon
 # sub waypoints_add {
-sub add_waypoint {
+sub waypoints_add {
   my $self = shift;
 
   for my $wpt ( @_ ) {
@@ -448,8 +452,6 @@ sub add_waypoint {
 =item routes( integer or name => 'name' )
 
 Returns the array reference of routes when called without argument. Optionally accepts a single integer refering to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
-
-Call C<$self->routes()> without arguments in scalar context to obtain the number of routes.
 
 =back
 
@@ -522,8 +524,6 @@ sub routes_add {
 =item tracks( integer or name => 'name' )
 
 Returns the array reference of tracks when called without argument. Optionally accepts a single integer refering to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
-
-Call C<$self->tracks()> without arguments in scalar context to obtain the number of tracks.
 
 =back
 
@@ -974,13 +974,17 @@ sub TO_JSON {
 
 =over 4
 
-=item save( filename => $fname, force => $bool, encoding => $enc )
+=item save( filename => $fname, key/values )
 
 Saves the C<Geo::Gpx> instance as a file.
 
-All fields are optional unless the instance was created without a filename (i.e with an XML string or a filehandle) and C<set_filename()> has not been called yet. If the filename is a relative path, the file will be saved in the instance's working directory (not the caller's, C<Cwd>).
+The filename field is optional unless the instance was created without a filename (i.e with an XML string or a filehandle) and C<set_filename()> has not been called yet. If the filename is a relative path, the file will be saved in the instance's working directory (not the caller's, C<Cwd>).
 
-C<encoding> can be either C<utf-8> (the default) or C<latin1>.
+I<key/values> are (all optional):
+
+Z<>    C<force>:      overwrites existing files if true, otherwise it won't.
+Z<>    C<extensions>: save C<< <extensions>…</extension> >> tags if true (defaults to false).
+Z<>    C<meta_time>:  save the C<< <time>…</time> >> tag in the file's meta information tags if true (defaults to false). Some applications like MapSource return an error if this tags is present. (All other time tags elsewhere are kept.)
 
 =back
 
@@ -994,6 +998,13 @@ sub save {
     croak "$fname already exists" if -f $fname and !$opts{force};
 
     $xml_string = $o->xml;
+    if ( ! $opts{extensions} ) {
+        $xml_string =~ s/\n*\w*<extensions>[^<]*<\/extensions>//gs
+    }
+    if ( ! $opts{meta_time} ) {
+        $xml_string =~ s/\n*\w*<time>[^<]*<\/time>//;
+    }
+
     if (defined ($opts{encoding}) and ( $opts{encoding} eq 'latin1') ) {
         open( $fh, ">:encoding(latin1)", $fname) or  die "can't open file $fname: $!";
     } else {

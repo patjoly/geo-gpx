@@ -19,8 +19,8 @@ my $href_chez_kaz = { lat => 45.94636, lon => -76.01154, 'sym' => 'Parking Area'
 my $o  = Geo::Gpx->new();
 isa_ok ($o,  'Geo::Gpx');
 
-$o->waypoints(  [ $href_chez_andy, $href_chez_pat ] );
-$o->add_waypoint( $href_chez_kaz );
+$o->waypoints_add( $href_chez_andy, $href_chez_pat );
+$o->waypoints_add( $href_chez_kaz );
 
 #
 # Section A - Constructor
@@ -38,16 +38,16 @@ my $fname_trk2 = 't/larose_trk2.gpx';
 my $o_trk_only2 = Geo::Gpx->new( input => "$fname_trk2" );
 isa_ok ($o_trk_only2,  'Geo::Gpx');
 
-# NextSteps: create a new empty gpx file, add the waypoints, add a track, then add another track (do we have a method to add another track like add_waypoint()
+# NextSteps: create a new empty gpx file, add the waypoints, add a track, then add another track (do we have a method to add another track like waypoints_add()
 
 #
 # Section B - Object Methods
 
-# add_waypoint(): will likely rename waypoints_add()
+# waypoints_add(): will likely rename waypoints_add()
 my %point = ( lat => 54.786989, lon => -2.344214, ele => 512, time => 1164488503, name => 'My house', desc => 'There\'s no place like home' );
 my $pt = Geo::Gpx::Point->new( %point );
 $pt->sym('Triangle, Blue');
-$o->add_waypoint( $pt );
+$o->waypoints_add( $pt );
 
 # tracks_add():
 my $track1 = $o_trk_only1->tracks( 1 );
@@ -83,6 +83,7 @@ my $o_ta2 = Geo::Gpx->new();
 $o_ta1->tracks_add( $aref1, name => 'A track with one segment' );
 $o_ta2->tracks_add( $aref2, $aref3, name => 'Two segments near the end of the trail' );
 
+$DB::single = 1;
 $o_ta1->routes_add( $aref2, name => 'My first route' );
 my @rtes = $o_ta1->routes();
 
@@ -95,7 +96,6 @@ $o_wpt_only1->set_wd( $tmp_dir );
 $o_wpt_only1->save( filename => 'test_save_wpt_and_track.gpx', force => 1);
 $o_wpt_only1->set_wd( '-' );
 
-$DB::single = 1;
 # save() - new instance based on saved file
 my $saved_then_read  = Geo::Gpx->new( input => $tmp_dir . '/test_save.gpx' );
 isa_ok ($saved_then_read,  'Geo::Gpx');
