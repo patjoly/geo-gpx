@@ -177,7 +177,7 @@ If C<use_datetime> is set to true, time values in parsed GPX will be L<DateTime>
 
 C<work_dir> or C<wd> for short can be set to specify where to save any working files (such as with the save_laps() method). The module never actually L<chdir>'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
 
-The working directory can be supplied as a relative (to L<Cwd::cwd>) or absolute path but is internally stored by C<set_wd()> as a full path. If C<work_dir> is ommitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle.
+The working directory can be supplied as a relative (to L<Cwd::cwd>) or absolute path but is internally stored by C<set_wd()> as a full path. If C<work_dir> is omitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle.
 
 =back
 
@@ -387,7 +387,7 @@ sub clone {
 
 =item waypoints( integer or name => 'name' )
 
-Returns the array reference of waypoints when called without argument. Optionally accepts a single integer refering to the waypoint number from waypoints aref (1-indexed) or a key value pair with the name of the waypoint to be returned.
+Returns the array reference of waypoints when called without argument. Optionally accepts a single integer referring to the waypoint number from waypoints aref (1-indexed) or a key value pair with the name of the waypoint to be returned.
 
 =back
 
@@ -429,8 +429,6 @@ Time values may either be an epoch offset or a L<DateTime>. If you wish to speci
 
 =cut
 
-# rename this method soon
-# sub waypoints_add {
 sub waypoints_add {
   my $self = shift;
 
@@ -449,9 +447,87 @@ sub waypoints_add {
 
 =over 4
 
+=item waypoints_search( $field => $regex )
+
+returns an array of waypoints whose I<$field> (e.g. C<name>, C<desc>, …) matches I<$regex>. By default, the regex is case-sensitive; specify C<qr/(?i:search_string_here)/> to ignore case.
+
+=back
+
+=cut
+
+sub waypoints_search {
+    my ($gpx, $field, $regex) = @_;
+    my @matches;
+    my $iter = $gpx->iterate_waypoints();
+    while ( my $pt = $iter->() ) {
+        if (defined $pt->$field) {
+            push @matches, $pt if ($pt->$field =~ $regex)
+        }
+    }
+    return @matches
+}
+
+=over 4
+
+=item waypoints_count()
+
+returns the number of waypoints in the object.
+
+=back
+
+=cut
+
+sub waypoints_count { return scalar @{ shift->{waypoints} } }
+
+=over 4
+
+=item waypoints_delete_all()
+
+delete all waypoints. Returns true (not sure what to return really).
+
+=back
+
+=cut
+
+sub waypoints_delete_all {
+    my $gpx = shift;
+    croak 'waypoints_delete_all() expects no arguments' if @_;
+    $gpx->{waypoints} = [];
+    return 1
+}
+
+=over 4
+
+=item waypoint_delete( $name )
+
+delete the waypoint whose C<name> is an exact match, case sensitively. Returns true if successful, C<undef> if the name cannot be found.
+
+=back
+
+=cut
+
+sub waypoint_delete {
+    my ($gpx, $name) = @_;
+    my ($index, $found_match) = (0, undef);
+    my $iter = $gpx->iterate_waypoints();
+    while ( my $pt = $iter->() ) {
+        if (defined $pt->name) {
+            if ($pt->name eq $name) {
+                $found_match = 1;
+                last
+            }
+        }
+        ++$index
+    }
+    splice @{$gpx->{waypoints}}, $index, 1 if $found_match;
+    return $found_match
+}
+
+=over 4
+
 =item routes( integer or name => 'name' )
 
-Returns the array reference of routes when called without argument. Optionally accepts a single integer refering to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
+Returns the array reference of routes when called without argument. Optionally accepts a single integer referring to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
 
 =back
 
@@ -523,7 +599,7 @@ sub routes_add {
 
 =item tracks( integer or name => 'name' )
 
-Returns the array reference of tracks when called without argument. Optionally accepts a single integer refering to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
+Returns the array reference of tracks when called without argument. Optionally accepts a single integer referring to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
 
 =back
 

@@ -83,9 +83,19 @@ my $o_ta2 = Geo::Gpx->new();
 $o_ta1->tracks_add( $aref1, name => 'A track with one segment' );
 $o_ta2->tracks_add( $aref2, $aref3, name => 'Two segments near the end of the trail' );
 
-$DB::single = 1;
 $o_ta1->routes_add( $aref2, name => 'My first route' );
 my @rtes = $o_ta1->routes();
+
+# waypoints_search():
+my @search;
+$DB::single = 1;
+@search = $o_wpt_only1->waypoints_search( name => qr/(?i:p[0-4])/);
+@search = $o_wpt_only1->waypoints_search( desc => qr/(?i:limoges)/);
+
+# waypoint_delete():
+$DB::single = 1;
+$o_wpt_only1->waypoint_delete('LP1');
+$o_wpt_only1->waypoints_count;      # was 3 should now be 2
 
 
 # save(): a few saves
