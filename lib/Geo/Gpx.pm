@@ -483,7 +483,7 @@ sub waypoints_count { return scalar @{ shift->{waypoints} } }
 
 =item waypoints_delete_all()
 
-delete all waypoints. Returns true (not sure what to return really).
+delete all waypoints. Returns true.
 
 =back
 
@@ -521,6 +521,42 @@ sub waypoint_delete {
     }
     splice @{$gpx->{waypoints}}, $index, 1 if $found_match;
     return $found_match
+}
+
+=over 4
+
+=item waypoint_closest_to( $point of $tcx_trackpoint )
+
+From any L<Geo::Gpx::Point> or L<Geo::TCX::Trackpoint> object, return the waypoint that is closest to it. If called in list context, returns a two-element array consisting of that waypoint, and the distance from the coordinate (in meters).
+
+=back
+
+=cut
+
+sub waypoint_closest_to {
+    my ($gpx, $to_pt) = (shift, shift);
+    my $croak_msg = 'waypoint_closest_to() expects a single argument in the form of Garmin::TCX::Trackpoint or Geo::Gpx::Point';
+    if (ref $to_pt) {
+        croak $croak_msg unless $to_pt->isa('Geo::TCX::Trackpoint') or $to_pt->isa('Geo::Gpx::Point')
+    } else { croak $croak_msg }
+    croak $croak_msg if @_;
+
+    my $gc = $to_pt->to_geocalc;
+    my ($closest_pt, $min_dist);
+    my $iter = $gpx->iterate_waypoints();
+    while ( my $pt = $iter->() ) {
+        my $distance = $gc->distance_to({ lat => $pt->lat, lon => $pt->lon });
+        $min_dist = $distance unless (defined $min_dist); # nb: $min_dist can be 0
+        $closest_pt ||= $pt;
+        if ($distance < $min_dist) {
+# print $pt->name, " distance is smaller at: ", $distance, "\n";
+# $DB::single=1;
+            $closest_pt = $pt;
+            $min_dist   = $distance
+        }
+    }
+    return ($closest_pt, $min_dist) if wantarray;
+    return $closest_pt
 }
 
 =over 4

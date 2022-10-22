@@ -88,12 +88,15 @@ my @rtes = $o_ta1->routes();
 
 # waypoints_search():
 my @search;
-$DB::single = 1;
 @search = $o_wpt_only1->waypoints_search( name => qr/(?i:p[0-4])/);
 @search = $o_wpt_only1->waypoints_search( desc => qr/(?i:limoges)/);
 
-# waypoint_delete():
+# waypoint_closest_to();
 $DB::single = 1;
+my $pt2 = Geo::Gpx::Point->new( lat => 45.405441, lon => -75.137497 );
+my ($closest, $dist) = $o_wpt_only1->waypoint_closest_to( $pt2 );
+
+# waypoint_delete():
 $o_wpt_only1->waypoint_delete('LP1');
 $o_wpt_only1->waypoints_count;      # was 3 should now be 2
 
