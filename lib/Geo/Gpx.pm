@@ -155,6 +155,10 @@ sub _init_shiny_new {
 
   $self->{schema} = [];
 
+  $self->{waypoints} = [];  # these need to be defined for the *_count accessors
+  $self->{routes} = [];
+  $self->{tracks} = [];
+
   $self->{handler} = {
     create => sub {
       return {@_};
@@ -385,26 +389,28 @@ sub clone {
 
 =over 4
 
-=item waypoints( integer or name => 'name' )
+=item waypoints( $int or name => $name )
 
-Returns the array reference of waypoints when called without argument. Optionally accepts a single integer referring to the waypoint number from waypoints aref (1-indexed) or a key value pair with the name of the waypoint to be returned.
+Returns the array reference of waypoints when called without argument.
+
+With an argument, returns a reference to the waypoint at integer index I<$int> (1-indexed) or whose C<name> field is an exact match with I<$name>. Returns C<undef> if none are found (no exception raised) such that this method can be used to check if a specific point exists.
 
 =back
 
 =cut
 
 sub waypoints {
-    my $o= shift;
-    return $o->{waypoints} unless @_;
+    my $aref = shift->{waypoints};
+    return $aref unless @_;
     my $waypoint;
     if (@_ == 2) {
-        for my $t ( @{ $o->{waypoints} } ) {
-            $waypoint = $t if $t->{$_[0]} eq $_[1]
+        croak "$_[0] key is not supported in waypoints()" unless $_[0] eq 'name';
+        for my $pt ( @{$aref} ) {
+            next unless defined $pt->name;
+            $waypoint = $pt if $pt->name eq $_[1]
         }
-        croak "no waypoint named $_[1] in waypoint list" unless $waypoint
     } else {
-        $waypoint = $o->{waypoints}[($_[0] - 1)];
-        croak "waypoint $_[0] not found" unless $waypoint
+        $waypoint = $aref->[ ($_[0] - 1) ]
     }
     return $waypoint
 }
@@ -525,6 +531,40 @@ sub waypoint_delete {
 
 =over 4
 
+=item waypoints_merge( $gpx, $regex )
+
+Merge waypoints with those contained in the L<Geo::Gpx> instance provide as argument. Waypoints are compared based on their respective C<name> fields, which must exist in I<$gpx> (if names are missing in the current instance, all points will be merged).
+
+A I<$regex> may be provided to limit the merge to a subset of waypoints from I<$gpx>.
+
+Returns the number of points succesfully merged (i.e. the difference in C<< $gps->waypoints_count >> before and after the merge).
+
+=back
+
+=cut
+
+sub waypoints_merge {
+    my ($gpx1, $gpx2) = (shift, shift);
+    my ($regex, @to_merge);
+    $regex = shift if ref $_[0] eq 'Regexp';
+    croak "waypoints_merge() expects a Geo::Gpx object (and optionally a regex) as arguments" if @_;
+
+    if ($regex) { @to_merge = $gpx2->waypoints_search( name => $regex ) }
+    else { @to_merge = @{ $gpx2->waypoints } }
+    croak "no waypoints to merge found" unless @to_merge;
+
+    my $before_count = $gpx1->waypoints_count;
+    for (0 .. $#to_merge) {
+        my $pt = $to_merge[$_];
+        croak "points to merge must contain a name field" unless defined $pt->name;
+        next if $gpx1->waypoints( name => $pt->name );      # i.e. don't add if exists, could later give option force => 1
+        $gpx1->waypoints_add( $pt )
+    }
+    return $gpx1->waypoints_count - $before_count
+}
+
+=over 4
+
 =item waypoint_closest_to( $point of $tcx_trackpoint )
 
 From any L<Geo::Gpx::Point> or L<Geo::TCX::Trackpoint> object, return the waypoint that is closest to it. If called in list context, returns a two-element array consisting of that waypoint, and the distance from the coordinate (in meters).
@@ -633,6 +673,18 @@ sub routes_add {
 
 =over 4
 
+=item routes_count()
+
+returns the number of routes in the object.
+
+=back
+
+=cut
+
+sub routes_count { return scalar @{ shift->{routes} } }
+
+=over 4
+
 =item tracks( integer or name => 'name' )
 
 Returns the array reference of tracks when called without argument. Optionally accepts a single integer referring to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
@@ -659,13 +711,13 @@ sub tracks {
 
 =over 4
 
-=item tracks_add( $track or $points_aref [, $points_aref, … ], name => $track_name )
+=item tracks_add( $track or $points_aref [, $points_aref, … ] [, name => $track_name ] )
 
 Add a track to a C<Geo::Gpx> object. The I<$track> is expected to be an existing track (i.e. a hash ref). Returns true.
 
-A new track can also be created based an array reference(s) of L<Geo::Gpx::Point> objects and added to the C<Geo::Gpx> instance. If more than one array reference is supplied, the resulting track will contain as many segments as the number of aref's provided.
+If <$track> has no C<name> field and none is provided, the timestamp of the first point of the track will be used (this is experimental and may change in the future). All other fields supported by tracks can be provided and will overwrite any existing fields in I<$track>.
 
-C<name> and all other meta fields supported by tracks can be provided and will overwrite any existing fields in I<$track>.
+A new track can also be created based an array reference(s) of L<Geo::Gpx::Point> objects and added to the C<Geo::Gpx> instance. If more than one array reference is supplied, the resulting track will contain as many segments as the number of aref's provided.
 
 =back
 
@@ -692,7 +744,8 @@ sub tracks_add {
     my $c;
     if (@arefs) {
         croak 'arguments to tracks_add() contain both an existing track and an array reference of points, please specify only one kind of reference' if $track;
-        $track = { 'name' => 'Track', 'segments' => [] };
+        # $track = { 'name' => 'Track', 'segments' => [] };
+        $track = { 'segments' => [] };      # commented line was just to show the structure of the aref, the name is not required
 
         for my $i (0 .. $#arefs) {
             my $points = $arefs[$i];
@@ -709,9 +762,28 @@ sub tracks_add {
     for (keys %opts) {
         $c->{$_} = $opts{$_}        # need to check the $_ are legal
     }
+
+    # let's try a default behaviour of adding time of first point if name is not defined (could provide option to turn this off)
+    if ( ! defined $c->{name} ) {
+        my $first_pt_time = $c->{segments}[0]{points}[0]->time;
+        $DB::single=1;
+        $c->{name} = $o->_format_time( $first_pt_time ) if $first_pt_time;
+    }
     push @{ $o->{tracks} }, $c;
     return 1
 }
+
+=over 4
+
+=item tracks_count()
+
+returns the number of tracks in the object.
+
+=back
+
+=cut
+
+sub tracks_count { return scalar @{ shift->{tracks} } }
 
 # Not a method
 sub _iterate_points {
@@ -1074,7 +1146,12 @@ With one difference: the keys will only be set if they are defined.
 sub TO_JSON {
   my $self = shift;
   my %json;    #= map {$_ => $self->$_} ...
-  for my $key ( @META, @ATTR, qw/ waypoints routes tracks / ) {
+  my @keys = (@META, @ATTR);
+  push @keys, 'waypoints' if  $self->waypoints_count;
+  push @keys, 'routes'    if  $self->routes_count;
+  push @keys, 'tracks'    if  $self->tracks_count;
+
+  for my $key ( @keys ) {
     my $val = $self->$key;
     $json{$key} = $val if defined $val;
   }
@@ -1115,6 +1192,9 @@ sub save {
     }
     if ( ! $opts{meta_time} ) {
         $xml_string =~ s/\n*\w*<time>[^<]*<\/time>//;
+    }
+    if ( ! $opts{time_nano} ) {             # undocumented for now
+        $xml_string =~ s/(<time>.*?)\+\d{2,2}:\d{2,2}(<\/time>)/$1Z$2/g
     }
 
     if (defined ($opts{encoding}) and ( $opts{encoding} eq 'latin1') ) {
