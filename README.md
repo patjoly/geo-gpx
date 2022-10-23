@@ -27,7 +27,7 @@ Geo::Gpx - Create and parse GPX files
 
     `work_dir` or `wd` for short can be set to specify where to save any working files (such as with the save\_laps() method). The module never actually [chdir](https://metacpan.org/pod/chdir)'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
 
-    The working directory can be supplied as a relative (to [Cwd::cwd](https://metacpan.org/pod/Cwd%3A%3Acwd)) or absolute path but is internally stored by `set_wd()` as a full path. If `work_dir` is ommitted, it is set based on the path of the _$filename_ supplied or the current working directory if the constructor is called with an XML string or a filehandle.
+    The working directory can be supplied as a relative (to [Cwd::cwd](https://metacpan.org/pod/Cwd%3A%3Acwd)) or absolute path but is internally stored by `set_wd()` as a full path. If `work_dir` is omitted, it is set based on the path of the _$filename_ supplied or the current working directory if the constructor is called with an XML string or a filehandle.
 
 - clone()
 
@@ -37,9 +37,11 @@ Geo::Gpx - Create and parse GPX files
 
 ## Methods
 
-- waypoints( integer or name => 'name' )
+- waypoints( $int or name => $name )
 
-    Returns the array reference of waypoints when called without argument. Optionally accepts a single integer refering to the waypoint number from waypoints aref (1-indexed) or a key value pair with the name of the waypoint to be returned.
+    Returns the array reference of waypoints when called without argument.
+
+    With an argument, returns a reference to the waypoint at integer index _$int_ (1-indexed) or whose `name` field is an exact match with _$name_. Returns `undef` if none are found (no exception raised) such that this method can be used to check if a specific point exists.
 
 - waypoints\_add( \\%point \[, \\%point, … \] )
 
@@ -55,9 +57,37 @@ Geo::Gpx - Create and parse GPX files
 
     Time values may either be an epoch offset or a [DateTime](https://metacpan.org/pod/DateTime). If you wish to specify the timezone use a [DateTime](https://metacpan.org/pod/DateTime). (This behaviour may change in the future.)
 
+- waypoints\_search( $field => $regex )
+
+    returns an array of waypoints whose _$field_ (e.g. `name`, `desc`, …) matches _$regex_. By default, the regex is case-sensitive; specify `qr/(?i:search_string_here)/` to ignore case.
+
+- waypoints\_count()
+
+    returns the number of waypoints in the object.
+
+- waypoints\_delete\_all()
+
+    delete all waypoints. Returns true.
+
+- waypoint\_delete( $name )
+
+    delete the waypoint whose `name` is an exact match, case sensitively. Returns true if successful, `undef` if the name cannot be found.
+
+- waypoints\_merge( $gpx, $regex )
+
+    Merge waypoints with those contained in the [Geo::Gpx](https://metacpan.org/pod/Geo%3A%3AGpx) instance provide as argument. Waypoints are compared based on their respective `name` fields, which must exist in _$gpx_ (if names are missing in the current instance, all points will be merged).
+
+    A _$regex_ may be provided to limit the merge to a subset of waypoints from _$gpx_.
+
+    Returns the number of points succesfully merged (i.e. the difference in `$gps->waypoints_count` before and after the merge).
+
+- waypoint\_closest\_to( $point of $tcx\_trackpoint )
+
+    From any [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint) or [Geo::TCX::Trackpoint](https://metacpan.org/pod/Geo%3A%3ATCX%3A%3ATrackpoint) object, return the waypoint that is closest to it. If called in list context, returns a two-element array consisting of that waypoint, and the distance from the coordinate (in meters).
+
 - routes( integer or name => 'name' )
 
-    Returns the array reference of routes when called without argument. Optionally accepts a single integer refering to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
+    Returns the array reference of routes when called without argument. Optionally accepts a single integer referring to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
 
 - routes\_add( $route or $points\_aref \[, name => $route\_name )
 
@@ -65,17 +95,25 @@ Geo::Gpx - Create and parse GPX files
 
     `name` and all other meta fields supported by routes can be provided and will overwrite any existing fields in _$route_.
 
+- routes\_count()
+
+    returns the number of routes in the object.
+
 - tracks( integer or name => 'name' )
 
-    Returns the array reference of tracks when called without argument. Optionally accepts a single integer refering to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
+    Returns the array reference of tracks when called without argument. Optionally accepts a single integer referring to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
 
-- tracks\_add( $track or $points\_aref \[, $points\_aref, … \], name => $track\_name )
+- tracks\_add( $track or $points\_aref \[, $points\_aref, … \] \[, name => $track\_name \] )
 
     Add a track to a `Geo::Gpx` object. The _$track_ is expected to be an existing track (i.e. a hash ref). Returns true.
 
+    If &lt;$track> has no `name` field and none is provided, the timestamp of the first point of the track will be used (this is experimental and may change in the future). All other fields supported by tracks can be provided and will overwrite any existing fields in _$track_.
+
     A new track can also be created based an array reference(s) of [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint) objects and added to the `Geo::Gpx` instance. If more than one array reference is supplied, the resulting track will contain as many segments as the number of aref's provided.
 
-    `name` and all other meta fields supported by tracks can be provided and will overwrite any existing fields in _$track_.
+- tracks\_count()
+
+    returns the number of tracks in the object.
 
 - iterate\_waypoints()
 - iterate\_trackpoints()
@@ -226,7 +264,7 @@ Please visit the project page at: [https://github.com/patjoly/geo-gpx](https://g
 
 # VERSION
 
-1.04
+1.05
 
 # LICENSE AND COPYRIGHT
 

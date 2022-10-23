@@ -766,7 +766,6 @@ sub tracks_add {
     # let's try a default behaviour of adding time of first point if name is not defined (could provide option to turn this off)
     if ( ! defined $c->{name} ) {
         my $first_pt_time = $c->{segments}[0]{points}[0]->time;
-        $DB::single=1;
         $c->{name} = $o->_format_time( $first_pt_time ) if $first_pt_time;
     }
     push @{ $o->{tracks} }, $c;
@@ -1194,7 +1193,8 @@ sub save {
         $xml_string =~ s/\n*\w*<time>[^<]*<\/time>//;
     }
     if ( ! $opts{time_nano} ) {             # undocumented for now
-        $xml_string =~ s/(<time>.*?)\+\d{2,2}:\d{2,2}(<\/time>)/$1Z$2/g
+        $xml_string =~ s/(<time>.*?)\+\d{2,2}:\d{2,2}(<\/time>)/$1Z$2/g;
+        $xml_string =~ s/(<name>.*?)\+\d{2,2}:\d{2,2}(<\/name>)/$1Z$2/g
     }
 
     if (defined ($opts{encoding}) and ( $opts{encoding} eq 'latin1') ) {
