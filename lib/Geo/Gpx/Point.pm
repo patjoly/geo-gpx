@@ -2,7 +2,7 @@ package Geo::Gpx::Point;
 use strict;
 use warnings;
 
-our $VERSION = '1.05';
+our $VERSION = '1.06';
 
 =encoding utf8
 
@@ -263,7 +263,7 @@ Patrick Joly C<< <patjol@cpan.org> >>.
 
 =head1 VERSION
 
-1.05
+1.06
 
 =head1 SEE ALSO
 
