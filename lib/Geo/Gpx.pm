@@ -537,7 +537,7 @@ Merge waypoints with those contained in the L<Geo::Gpx> instance provide as argu
 
 A I<$regex> may be provided to limit the merge to a subset of waypoints from I<$gpx>.
 
-Returns the number of points succesfully merged (i.e. the difference in C<< $gps->waypoints_count >> before and after the merge).
+Returns the number of points successfully merged (i.e. the difference in C<< $gps->waypoints_count >> before and after the merge).
 
 =back
 

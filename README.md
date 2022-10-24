@@ -79,7 +79,7 @@ Geo::Gpx - Create and parse GPX files
 
     A _$regex_ may be provided to limit the merge to a subset of waypoints from _$gpx_.
 
-    Returns the number of points succesfully merged (i.e. the difference in `$gps->waypoints_count` before and after the merge).
+    Returns the number of points successfully merged (i.e. the difference in `$gps->waypoints_count` before and after the merge).
 
 - waypoint\_closest\_to( $point of $tcx\_trackpoint )
 
