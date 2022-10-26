@@ -21,21 +21,20 @@ my %WriteMakefileArgs = (
   "MIN_PERL_VERSION" => "5.008",
   "NAME" => "Geo::Gpx",
   "PREREQ_PM" => {
-    "DateTime" => 0,
+    "DateTime" => "1.44",
     "DateTime::Format::ISO8601" => 0,
     "Geo::Calc" => 0,
     "Geo::Coordinates::Transform" => 0,
     "HTML::Entities" => 0,
     "Scalar::Util" => 0,
     "Test::More" => 0,
-    "Time::Local" => 0,
     "XML::Descent" => 0,
     "version" => 0
   },
   "TEST_REQUIRES" => {
     "Test::More" => 0
   },
-  "VERSION" => "1.06",
+  "VERSION" => "1.07",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -43,7 +42,7 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
-  "DateTime" => 0,
+  "DateTime" => "1.44",
   "DateTime::Format::ISO8601" => 0,
   "Geo::Calc" => 0,
   "Geo::Coordinates::Transform" => 0,
@@ -51,7 +50,6 @@ my %FallbackPrereqs = (
   "Module::Build" => "0.28",
   "Scalar::Util" => 0,
   "Test::More" => 0,
-  "Time::Local" => 0,
   "XML::Descent" => 0,
   "version" => 0
 );
