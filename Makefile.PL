@@ -22,7 +22,7 @@ my %WriteMakefileArgs = (
   "NAME" => "Geo::Gpx",
   "PREREQ_PM" => {
     "DateTime" => "1.44",
-    "DateTime::Format::ISO8601" => 0,
+    "DateTime::Format::ISO8601" => "0.16",
     "Geo::Calc" => 0,
     "Geo::Coordinates::Transform" => 0,
     "HTML::Entities" => 0,
@@ -34,7 +34,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => 0
   },
-  "VERSION" => "1.07",
+  "VERSION" => "1.08",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -43,7 +43,7 @@ my %WriteMakefileArgs = (
 
 my %FallbackPrereqs = (
   "DateTime" => "1.44",
-  "DateTime::Format::ISO8601" => 0,
+  "DateTime::Format::ISO8601" => "0.16",
   "Geo::Calc" => 0,
   "Geo::Coordinates::Transform" => 0,
   "HTML::Entities" => 0,
