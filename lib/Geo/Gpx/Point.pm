@@ -23,7 +23,6 @@ L<Geo::Gpx::Point> provides a data structure for GPX points and provides accesso
 use DateTime::Format::ISO8601;
 use Geo::Calc;
 use Geo::Coordinates::Transform;
-use Scalar::Util qw( blessed );
 use Carp qw(confess croak cluck);
 use vars qw($AUTOLOAD %possible_attr);
 use overload ('""' => 'as_string');
@@ -66,11 +65,9 @@ sub new {
         } else { croak "field '$key' not supported" }
     }
 
-    if (defined $wpt->{time} and ! blessed $wpt->{time}) {  # i.e could already be a DateTime object
-        if ($wpt->{time} =~ /-|:/) {
-            my $dt = DateTime::Format::ISO8601->parse_datetime( $wpt->{time} );
-            $wpt->{time} = $dt->epoch
-        }
+    if (defined $wpt->{time} and $wpt->{time} =~ /-|:/ ) {
+        my $dt = DateTime::Format::ISO8601->parse_datetime( $wpt->{time} );
+        $wpt->{time} = $dt->epoch
     }
     return $wpt
 }
@@ -208,6 +205,26 @@ sub to_tcx {
     my $xml = '<Position><LatitudeDegrees>'  . $pt->lat . '</LatitudeDegrees>' .
                         '<LongitudeDegrees>' . $pt->lon . '</LongitudeDegrees></Position';
     return Geo::TCX::Trackpoint->new( $xml )
+}
+
+=over 4
+
+=item time_datetime ()
+
+Return a L<DateTime> object corresponding to the time of the point. The C<time_zone> of the object will be C<< 'UTC' >>. Specify C<< time_zone => $tz >> to set a different one.
+
+=back
+
+=cut
+
+# we never store a DateTime object but provide a method to return one
+sub time_datetime    {
+    my $pt = shift;
+    my %opts = @_;
+    croak 'Geo::Gpx::Point has no time field' unless $pt->time;
+    my $dt = DateTime->from_epoch( $pt->time );
+    $dt->set_time_zone( $opts{time_zone} ) if $opts{time_zone};
+    return  $dt
 }
 
 =over 4

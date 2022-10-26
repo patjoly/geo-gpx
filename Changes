@@ -1,5 +1,10 @@
 Revision history for Geo-Gpx
 
+1.06 [2022-10-25]
+    Added method Geo::Gpx::Point->time_datetime() returning a DateTime object corresponding to the time of a point
+
+    Removed use_datetime option in Geo::Gpx->new() in favour of the new Geo::Gpx::Point method above
+
 1.05 [2022-10-23]
     Various new methods for waypoints: 
         - waypoints_search(), waypoints_merge(), waypoints_count(), waypoints_delete_all(), waypoint_delete(), waypoint_closest_to()

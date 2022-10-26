@@ -4,30 +4,28 @@ Geo::Gpx - Create and parse GPX files
 
 # SYNOPSIS
 
-    my ($gpx, $waypoints, $track);
+    my ($gpx, $waypoints, $tracks);
 
-    # From an open file or an XML string
-    $gpx = Geo::Gpx->new( input => $fh );
-    $gpx = Geo::Gpx->new( xml => $xml );
+    # From a filename, an open file, or an XML string:
+
+    $gpx = Geo::Gpx->new( input => $fname );
+    $gpx = Geo::Gpx->new( input => $fh    );
+    $gpx = Geo::Gpx->new(   xml => $xml   );
 
     my $waypoints = $gpx->waypoints();
     my $tracks    = $gpx->tracks();
 
 # DESCRIPTION
 
-`Geo::Gpx` supports the parsing and generation of GPX data. GPX 1.0 and 1.1 are supported.
+`Geo::Gpx` supports the parsing and generation of GPX data.
 
 ## Constructor
 
-- new( args \[, use\_datetime => $bool, work\_dir => $working\_directory )
+- new( input => ($fname | $fh) or xml => $xml \[, work\_dir => $working\_directory \] )
 
-    Create and return a new `Geo::Gpx` instance based on an array of points that can each be constructed as [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint) objects or with a supplied XML file handle or XML string.
+    Create and return a new `Geo::Gpx` instance based on a \*.gpx file (_$fname_), an open filehandle (_$fh_), or an XML string (_$xml_). GPX 1.0 and 1.1 are supported.
 
-    If `use_datetime` is set to true, time values in parsed GPX will be [DateTime](https://metacpan.org/pod/DateTime) objects rather than epoch times. (This option may be disabled in the future in favour of a method that can return a [DateTime](https://metacpan.org/pod/DateTime) object from a specified point.)
-
-    `work_dir` or `wd` for short can be set to specify where to save any working files (such as with the save\_laps() method). The module never actually [chdir](https://metacpan.org/pod/chdir)'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
-
-    The working directory can be supplied as a relative (to [Cwd::cwd](https://metacpan.org/pod/Cwd%3A%3Acwd)) or absolute path but is internally stored by `set_wd()` as a full path. If `work_dir` is omitted, it is set based on the path of the _$filename_ supplied or the current working directory if the constructor is called with an XML string or a filehandle.
+    The optional `work_dir` (or `wd` for short) specifies where to save any working files, such as with the save() method. It can be supplied as a relative path or as an absolute path. If `work_dir` is omitted, it is set based on the path of the _$filename_ supplied or the current working directory if the constructor is called with an XML string or a filehandle (see `set_wd()` for more info).
 
 - clone()
 
@@ -39,23 +37,21 @@ Geo::Gpx - Create and parse GPX files
 
 - waypoints( $int or name => $name )
 
-    Returns the array reference of waypoints when called without argument.
+    Without arguments, returns the array reference of waypoints.
 
-    With an argument, returns a reference to the waypoint at integer index _$int_ (1-indexed) or whose `name` field is an exact match with _$name_. Returns `undef` if none are found (no exception raised) such that this method can be used to check if a specific point exists.
+    With an argument, returns a reference to the waypoint whose `name` field is an exact match with _$name_ or the one at integer index _$int_ (1-indexed). Returns `undef` if none are found such that this method can be used to check if a specific point exists (i.e. no exception is raised if _$name_ or _$int_ do not exist) .
 
-- waypoints\_add( \\%point \[, \\%point, … \] )
+- waypoints\_add( $point or \\%point \[, $point or \\%point, … \] )
 
     Add one or more waypoints. Each waypoint must be either a [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint) or a hash reference with fields that can be parsed by [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint)'s `new()` constructor. See the later for the possible fields.
 
-        %point = ( lat => 54.786989, lon => -2.344214, ele => 512, time => 1164488503, name => 'My house', desc => 'There\'s no place like home' );
+        %point = ( lat => 54.786989, lon => -2.344214, ele => 512, name => 'My house' );
         $gpx->waypoints_add( \%point );
 
           or
 
         $pt = Geo::Gpx::Point->new( %point );
         $gpx->waypoints_add( $pt );
-
-    Time values may either be an epoch offset or a [DateTime](https://metacpan.org/pod/DateTime). If you wish to specify the timezone use a [DateTime](https://metacpan.org/pod/DateTime). (This behaviour may change in the future.)
 
 - waypoints\_search( $field => $regex )
 
@@ -79,7 +75,7 @@ Geo::Gpx - Create and parse GPX files
 
     A _$regex_ may be provided to limit the merge to a subset of waypoints from _$gpx_.
 
-    Returns the number of points succesfully merged (i.e. the difference in `$gps->waypoints_count` before and after the merge).
+    Returns the number of points successfully merged (i.e. the difference in `$gps->waypoints_count` before and after the merge).
 
 - waypoint\_closest\_to( $point of $tcx\_trackpoint )
 
@@ -107,7 +103,7 @@ Geo::Gpx - Create and parse GPX files
 
     Add a track to a `Geo::Gpx` object. The _$track_ is expected to be an existing track (i.e. a hash ref). Returns true.
 
-    If &lt;$track> has no `name` field and none is provided, the timestamp of the first point of the track will be used (this is experimental and may change in the future). All other fields supported by tracks can be provided and will overwrite any existing fields in _$track_.
+    If _$track_ has no `name` field and none is provided, the timestamp of the first point of the track will be used (this is experimental and may change in the future). All other fields supported by tracks can be provided and will overwrite any existing fields in _$track_.
 
     A new track can also be created based an array reference(s) of [Geo::Gpx::Point](https://metacpan.org/pod/Geo%3A%3AGpx%3A%3APoint) objects and added to the `Geo::Gpx` instance. If more than one array reference is supplied, the resulting track will contain as many segments as the number of aref's provided.
 
@@ -183,11 +179,9 @@ Geo::Gpx - Create and parse GPX files
 
 - set\_wd( $folder )
 
-    Sets/gets the working directory and checks the validity of that path. Relative paths are supported for setting but only full paths are returned or internally stored.
+    Sets/gets the working directory for any eventual saving of the \*.gpx file and checks the validity of that path. It can can be set as a relative path (i.e. relative to the actual [Cwd::cwd](https://metacpan.org/pod/Cwd%3A%3Acwd)) or as an absolute path, but is always returned as a full path.
 
-    The previous working directory is also stored in memory; can call &lt;set\_wd('-')> to switch back and forth between two directories.
-
-    Note that it does not call [chdir](https://metacpan.org/pod/chdir), it simply sets the path for the eventual saving of files.
+    This working directory is always defined. The previous one is also stored in memory, such that `set_wd('-')` switches back and forth between two directories. The module never actually [chdir](https://metacpan.org/pod/chdir)'s, it just keeps track of where the user wishes to save files.
 
 ## Accessors
 
@@ -212,11 +206,9 @@ Geo::Gpx - Create and parse GPX files
     The link is stored similarly to the author information, it can be set by supplying a hash reference as:
       { link  => { text => 'Hexten', href => 'http://hexten.net/' } }
 
-- time( $epoch or $DateTime )
+- time( $epoch )
 
-    Accessor for the &lt;time> element of a GPX. The time is converted to a Unix epoch time when a GPX document is parsed unless the `use_datetime` option is specified in which case times will be represented as [DateTime](https://metacpan.org/pod/DateTime) objects.
-
-    When setting the time you may supply either an epoch time or a [DateTime](https://metacpan.org/pod/DateTime) object.
+    Accessor for the &lt;time> element of a GPX. The time is converted to a Unix epoch time when a GPX document is parsed, therefore only epoch time is supported for setting.
 
 - version()
 
@@ -241,7 +233,6 @@ These methods will likely removed soon as they reflect a very dated release of t
 [DateTime](https://metacpan.org/pod/DateTime),
 [HTML::Entities](https://metacpan.org/pod/HTML%3A%3AEntities),
 [Scalar::Util](https://metacpan.org/pod/Scalar%3A%3AUtil),
-[Time::Local](https://metacpan.org/pod/Time%3A%3ALocal),
 [XML::Descent](https://metacpan.org/pod/XML%3A%3ADescent)
 
 # SEE ALSO
@@ -264,7 +255,7 @@ Please visit the project page at: [https://github.com/patjoly/geo-gpx](https://g
 
 # VERSION
 
-1.05
+1.06
 
 # LICENSE AND COPYRIGHT
 

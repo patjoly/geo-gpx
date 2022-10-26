@@ -10,7 +10,6 @@ use DateTime::Format::ISO8601;
 use DateTime;
 use HTML::Entities qw( encode_entities encode_entities_numeric );
 use Scalar::Util qw( blessed );
-use Time::Local;
 use XML::Descent;
 use File::Basename;
 use Cwd qw(cwd abs_path);
@@ -24,18 +23,20 @@ Geo::Gpx - Create and parse GPX files
 
 =head1 SYNOPSIS
 
-  my ($gpx, $waypoints, $track);
+  my ($gpx, $waypoints, $tracks);
 
-  # From an open file or an XML string
-  $gpx = Geo::Gpx->new( input => $fh );
-  $gpx = Geo::Gpx->new( xml => $xml );
+  # From a filename, an open file, or an XML string:
+
+  $gpx = Geo::Gpx->new( input => $fname );
+  $gpx = Geo::Gpx->new( input => $fh    );
+  $gpx = Geo::Gpx->new(   xml => $xml   );
 
   my $waypoints = $gpx->waypoints();
   my $tracks    = $gpx->tracks();
 
 =head1 DESCRIPTION
 
-C<Geo::Gpx> supports the parsing and generation of GPX data. GPX 1.0 and 1.1 are supported.
+C<Geo::Gpx> supports the parsing and generation of GPX data.
 
 =cut
 
@@ -89,31 +90,18 @@ BEGIN {
   }
 }
 
-sub _parse_time {
+sub _time_string_to_epoch {
   my ( $self, $str ) = @_;
   my $dt = DateTime::Format::ISO8601->parse_datetime( $str );
-  return $self->{use_datetime} ? $dt : $dt->epoch;
+  return $dt->epoch
 }
 
-sub _format_time {
+sub _time_epoch_to_string {
   my ( $self, $tm, $legacy ) = @_;
-  unless ( blessed $tm && $tm->can( 'strftime' ) ) {
-    return $self->_format_time(
-      DateTime->from_epoch(
-        epoch     => $tm,
-        time_zone => 'UTC'
-      ),
-      $legacy
-    );
-  }
-
-  my $ts = $tm->strftime(
-    $legacy
-    ? '%Y-%m-%dT%H:%M:%S.%7N%z'
-    : '%Y-%m-%dT%H:%M:%S%z'
-  );
+  $tm = DateTime->from_epoch( epoch => $tm, time_zone => 'UTC' );
+  my $ts = $tm->strftime( $legacy ? '%Y-%m-%dT%H:%M:%S.%7N%z' : '%Y-%m-%dT%H:%M:%S%z' );
   $ts =~ s/(\d{2})$/:$1/;
-  return $ts;
+  return $ts
 }
 
 # For backwards compatibility
@@ -143,15 +131,13 @@ sub _init_legacy {
       return Geo::Cache->new( @_ );
     },
     time => sub {
-      return $self->_format_time( $_[0], 1 );
+      return $self->_time_epoch_to_string( $_[0], 1 );
     },
   };
 }
 
 sub _init_shiny_new {
   my ( $self, $args ) = @_;
-
-  $self->{use_datetime} = $args->{use_datetime} || 0;
 
   $self->{schema} = [];
 
@@ -164,7 +150,7 @@ sub _init_shiny_new {
       return {@_};
     },
     time => sub {
-      return $self->_format_time( $_[0], 0 );
+      return $self->_time_epoch_to_string( $_[0], 0 );
     },
   };
 }
@@ -173,15 +159,11 @@ sub _init_shiny_new {
 
 =over 4
 
-=item new( args [, use_datetime => $bool, work_dir => $working_directory )
+=item new( input => ($fname | $fh) or xml => $xml [, work_dir => $working_directory ] )
 
-Create and return a new C<Geo::Gpx> instance based on an array of points that can each be constructed as L<Geo::Gpx::Point> objects or with a supplied XML file handle or XML string.
+Create and return a new C<Geo::Gpx> instance based on a *.gpx file (I<$fname>), an open filehandle (I<$fh>), or an XML string (I<$xml>). GPX 1.0 and 1.1 are supported.
 
-If C<use_datetime> is set to true, time values in parsed GPX will be L<DateTime> objects rather than epoch times. (This option may be disabled in the future in favour of a method that can return a L<DateTime> object from a specified point.)
-
-C<work_dir> or C<wd> for short can be set to specify where to save any working files (such as with the save_laps() method). The module never actually L<chdir>'s, it just keeps track of where the user wants to save files (and not have to type filenames with path each time), hence it is always defined.
-
-The working directory can be supplied as a relative (to L<Cwd::cwd>) or absolute path but is internally stored by C<set_wd()> as a full path. If C<work_dir> is omitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle.
+The optional C<work_dir> (or C<wd> for short) specifies where to save any working files, such as with the save() method. It can be supplied as a relative path or as an absolute path. If C<work_dir> is omitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle (see C<< set_wd() >> for more info).
 
 =back
 
@@ -272,7 +254,7 @@ sub _parse {
         },
         time => sub {
           my ( $elem, $attr, $ctx ) = @_;
-          my $tm = $self->_parse_time( _trim( $p->text() ) );
+          my $tm = $self->_time_string_to_epoch( _trim( $p->text() ) );
           $ctx->{$elem} = $tm if defined $tm;
         }
       );
@@ -391,9 +373,9 @@ sub clone {
 
 =item waypoints( $int or name => $name )
 
-Returns the array reference of waypoints when called without argument.
+Without arguments, returns the array reference of waypoints.
 
-With an argument, returns a reference to the waypoint at integer index I<$int> (1-indexed) or whose C<name> field is an exact match with I<$name>. Returns C<undef> if none are found (no exception raised) such that this method can be used to check if a specific point exists.
+With an argument, returns a reference to the waypoint whose C<name> field is an exact match with I<$name> or the one at integer index I<$int> (1-indexed). Returns C<undef> if none are found such that this method can be used to check if a specific point exists (i.e. no exception is raised if I<$name> or I<$int> do not exist) .
 
 =back
 
@@ -417,19 +399,17 @@ sub waypoints {
 
 =over 4
 
-=item waypoints_add( \%point [, \%point, … ] )
+=item waypoints_add( $point or \%point [, $point or \%point, … ] )
 
 Add one or more waypoints. Each waypoint must be either a L<Geo::Gpx::Point> or a hash reference with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
 
-  %point = ( lat => 54.786989, lon => -2.344214, ele => 512, time => 1164488503, name => 'My house', desc => 'There\'s no place like home' );
+  %point = ( lat => 54.786989, lon => -2.344214, ele => 512, name => 'My house' );
   $gpx->waypoints_add( \%point );
 
     or
 
   $pt = Geo::Gpx::Point->new( %point );
   $gpx->waypoints_add( $pt );
-
-Time values may either be an epoch offset or a L<DateTime>. If you wish to specify the timezone use a L<DateTime>. (This behaviour may change in the future.)
 
 =back
 
@@ -537,7 +517,7 @@ Merge waypoints with those contained in the L<Geo::Gpx> instance provide as argu
 
 A I<$regex> may be provided to limit the merge to a subset of waypoints from I<$gpx>.
 
-Returns the number of points succesfully merged (i.e. the difference in C<< $gps->waypoints_count >> before and after the merge).
+Returns the number of points successfully merged (i.e. the difference in C<< $gps->waypoints_count >> before and after the merge).
 
 =back
 
@@ -715,7 +695,7 @@ sub tracks {
 
 Add a track to a C<Geo::Gpx> object. The I<$track> is expected to be an existing track (i.e. a hash ref). Returns true.
 
-If <$track> has no C<name> field and none is provided, the timestamp of the first point of the track will be used (this is experimental and may change in the future). All other fields supported by tracks can be provided and will overwrite any existing fields in I<$track>.
+If I<$track> has no C<name> field and none is provided, the timestamp of the first point of the track will be used (this is experimental and may change in the future). All other fields supported by tracks can be provided and will overwrite any existing fields in I<$track>.
 
 A new track can also be created based an array reference(s) of L<Geo::Gpx::Point> objects and added to the C<Geo::Gpx> instance. If more than one array reference is supplied, the resulting track will contain as many segments as the number of aref's provided.
 
@@ -766,7 +746,7 @@ sub tracks_add {
     # let's try a default behaviour of adding time of first point if name is not defined (could provide option to turn this off)
     if ( ! defined $c->{name} ) {
         my $first_pt_time = $c->{segments}[0]{points}[0]->time;
-        $c->{name} = $o->_format_time( $first_pt_time ) if $first_pt_time;
+        $c->{name} = $o->_time_epoch_to_string( $first_pt_time ) if $first_pt_time;
     }
     push @{ $o->{tracks} }, $c;
     return 1
@@ -1246,11 +1226,9 @@ sub set_filename {
 
 =item set_wd( $folder )
 
-Sets/gets the working directory and checks the validity of that path. Relative paths are supported for setting but only full paths are returned or internally stored.
+Sets/gets the working directory for any eventual saving of the *.gpx file and checks the validity of that path. It can can be set as a relative path (i.e. relative to the actual L<Cwd::cwd>) or as an absolute path, but is always returned as a full path.
 
-The previous working directory is also stored in memory; can call <set_wd('-')> to switch back and forth between two directories.
-
-Note that it does not call L<chdir>, it simply sets the path for the eventual saving of files.
+This working directory is always defined. The previous one is also stored in memory, such that C<set_wd('-')> switches back and forth between two directories. The module never actually L<chdir>'s, it just keeps track of where the user wishes to save files.
 
 =back
 
@@ -1364,11 +1342,9 @@ The author information is stored in a hash that reflects the structure of a GPX 
 The link is stored similarly to the author information, it can be set by supplying a hash reference as:
   { link  => { text => 'Hexten', href => 'http://hexten.net/' } }
 
-=item time( $epoch or $DateTime )
+=item time( $epoch )
 
-Accessor for the <time> element of a GPX. The time is converted to a Unix epoch time when a GPX document is parsed unless the C<use_datetime> option is specified in which case times will be represented as L<DateTime> objects.
-
-When setting the time you may supply either an epoch time or a L<DateTime> object.
+Accessor for the <time> element of a GPX. The time is converted to a Unix epoch time when a GPX document is parsed, therefore only epoch time is supported for setting.
 
 =item version()
 
@@ -1400,7 +1376,6 @@ L<DateTime::Format::ISO8601>,
 L<DateTime>,
 L<HTML::Entities>,
 L<Scalar::Util>,
-L<Time::Local>,
 L<XML::Descent>
 
 =head1 SEE ALSO
