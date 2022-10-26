@@ -214,19 +214,6 @@ Geo::Gpx - Create and parse GPX files
 
     Returns the schema version of a GPX document. Versions 1.0 and 1.1 are supported.
 
-## Legacy methods provided for compatibility
-
-These methods will likely removed soon as they reflect a very dated release of this module.
-
-- gpx()
-
-    Synonym for `xml()`.
-
-- gpsdrive()
-- loc()
-
-    Provided for compatibility with version 0.10.
-
 # DEPENDENCIES
 
 [DateTime::Format::ISO8601](https://metacpan.org/pod/DateTime%3A%3AFormat%3A%3AISO8601),
@@ -255,7 +242,7 @@ Please visit the project page at: [https://github.com/patjoly/geo-gpx](https://g
 
 # VERSION
 
-1.06
+1.07
 
 # LICENSE AND COPYRIGHT
 
