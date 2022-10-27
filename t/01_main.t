@@ -70,7 +70,7 @@ my $track1 = $o_trk_only1->tracks( 1 );
 my $track2 = $o_trk_only2->tracks( 1 );
 $o_wpt_only1->tracks_add( $track1, name => 'My first track' );
 $o_wpt_only1->tracks_add( $track2 );
-my $get_track = $o_wpt_only1->tracks( name => '2020-10-25T20:36:07+00:00' );
+my $get_track = $o_wpt_only1->tracks( name => '2020-10-25T20:36:07Z' );
 is($o_wpt_only1->tracks_count, 2,      "    tracks_add(): test the number of tracks found");
 
 # tracks_add(): test also with aref's

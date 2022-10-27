@@ -91,17 +91,16 @@ BEGIN {
 }
 
 sub _time_string_to_epoch {
-  my ( $self, $str ) = @_;
-  my $dt = DateTime::Format::ISO8601->parse_datetime( $str );
+  my $dt = DateTime::Format::ISO8601->parse_datetime( shift );
   return $dt->epoch
 }
 
 sub _time_epoch_to_string {
-  my ( $self, $tm) = @_;
-  $tm = DateTime->from_epoch( epoch => $tm, time_zone => 'UTC' );
-  my $ts = $tm->strftime( '%Y-%m-%dT%H:%M:%S%z' );
-  $ts =~ s/(\d{2})$/:$1/;
-  return $ts
+  my $dt = DateTime->from_epoch( epoch => shift, time_zone => 'UTC' );
+  my $str = $dt->strftime( '%Y-%m-%dT%H:%M:%S%z' );
+  $str =~ s/(\d{2})$/:$1/;
+  $str =~ s/\+00:00$/Z/;
+  return $str
 }
 
 sub _init_shiny_new {
@@ -118,7 +117,7 @@ sub _init_shiny_new {
       return {@_};
     },
     time => sub {
-      return $self->_time_epoch_to_string( $_[0] );
+      return _time_epoch_to_string( $_[0] );
     },
   };
 }
@@ -214,7 +213,7 @@ sub _parse {
         },
         time => sub {
           my ( $elem, $attr, $ctx ) = @_;
-          my $tm = $self->_time_string_to_epoch( _trim( $p->text() ) );
+          my $tm = _time_string_to_epoch( _trim( $p->text() ) );
           $ctx->{$elem} = $tm if defined $tm;
         }
       );
@@ -706,7 +705,7 @@ sub tracks_add {
     # let's try a default behaviour of adding time of first point if name is not defined (could provide option to turn this off)
     if ( ! defined $c->{name} ) {
         my $first_pt_time = $c->{segments}[0]{points}[0]->time;
-        $c->{name} = $o->_time_epoch_to_string( $first_pt_time ) if $first_pt_time;
+        $c->{name} = _time_epoch_to_string( $first_pt_time ) if $first_pt_time;
     }
     push @{ $o->{tracks} }, $c;
     return 1
@@ -1124,10 +1123,6 @@ sub save {
     }
     if ( ! $opts{meta_time} ) {
         $xml_string =~ s/\n*\w*<time>[^<]*<\/time>//;
-    }
-    if ( ! $opts{time_nano} ) {             # undocumented for now
-        $xml_string =~ s/(<time>.*?)\+\d{2,2}:\d{2,2}(<\/time>)/$1Z$2/g;
-        $xml_string =~ s/(<name>.*?)\+\d{2,2}:\d{2,2}(<\/name>)/$1Z$2/g
     }
 
     if (defined ($opts{encoding}) and ( $opts{encoding} eq 'latin1') ) {

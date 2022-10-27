@@ -20,7 +20,7 @@ L<Geo::Gpx::Point> provides a data structure for GPX points and provides accesso
 
 =cut
 
-use DateTime::Format::ISO8601;
+use Geo::Gpx;
 use Geo::Calc;
 use Geo::Coordinates::Transform;
 use Carp qw(confess croak cluck);
@@ -66,8 +66,7 @@ sub new {
     }
 
     if (defined $wpt->{time} and $wpt->{time} =~ /-|:/ ) {
-        my $dt = DateTime::Format::ISO8601->parse_datetime( $wpt->{time} );
-        $wpt->{time} = $dt->epoch
+        $wpt->{time} = Geo::Gpx::_time_string_to_epoch( $wpt->{time} )
     }
     return $wpt
 }
