@@ -520,11 +520,10 @@ sub waypoint_closest_to {
     } else { croak $croak_msg }
     croak $croak_msg if @_;
 
-    my $gc = $to_pt->to_geocalc;
     my ($closest_pt, $min_dist);
     my $iter = $gpx->iterate_waypoints();
     while ( my $pt = $iter->() ) {
-        my $distance = $gc->distance_to({ lat => $pt->lat, lon => $pt->lon });
+        my $distance = $to_pt->distance_to( $pt );
         $min_dist = $distance unless (defined $min_dist); # nb: $min_dist can be 0
         $closest_pt ||= $pt;
         if ($distance < $min_dist) {
