@@ -3,7 +3,7 @@ package Geo::Gpx;
 use warnings;
 use strict;
 
-our $VERSION = '1.08';
+our $VERSION = '1.09';
 
 use Carp;
 use DateTime::Format::ISO8601;
@@ -1292,7 +1292,7 @@ Please visit the project page at: L<https://github.com/patjoly/geo-gpx>.
 
 =head1 VERSION
 
-1.08
+1.09
 
 =head1 LICENSE AND COPYRIGHT
 
