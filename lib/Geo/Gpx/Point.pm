@@ -271,7 +271,7 @@ sub time_datetime    {
     my $pt = shift;
     my %opts = @_;
     croak 'Geo::Gpx::Point has no time field' unless $pt->time;
-    my $dt = DateTime->from_epoch( $pt->time );
+    my $dt = DateTime->from_epoch( epoch => $pt->time );
     $dt->set_time_zone( $opts{time_zone} ) if $opts{time_zone};
     return  $dt
 }

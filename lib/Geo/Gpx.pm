@@ -130,7 +130,7 @@ sub _init_shiny_new {
 
 Create and return a new C<Geo::Gpx> instance based on a *.gpx file (I<$fname>), an open filehandle (I<$fh>), or an XML string (I<$xml>). GPX 1.0 and 1.1 are supported.
 
-The optional C<work_dir> (or C<wd> for short) specifies where to save any working files, such as with the save() method. It can be supplied as a relative path or as an absolute path. If C<work_dir> is omitted, it is set based on the path of the I<$filename> supplied or the current working directory if the constructor is called with an XML string or a filehandle (see C<< set_wd() >> for more info).
+The optional C<work_dir> (or C<wd> for short) specifies where to save any working files, such as with the save() method. It can be supplied as a relative path or as an absolute path. If C<work_dir> is omitted, it is set based on the path of the I<$fname> supplied or the current working directory if the constructor is called with an XML string or a filehandle (see C<< set_wd() >> for more info).
 
 =back
 
@@ -1173,9 +1173,9 @@ sub set_filename {
 
 =item set_wd( $folder )
 
-Sets/gets the working directory for any eventual saving of the *.gpx file and checks the validity of that path. It can can be set as a relative path (i.e. relative to the actual L<Cwd::cwd>) or as an absolute path, but is always returned as a full path.
+Sets/gets the working directory for any eventual saving of the *.gpx file and checks the validity of that path. It can be set as a relative path (i.e. relative to the actual L<Cwd>) or as an absolute path, but is always returned as a full path.
 
-This working directory is always defined. The previous one is also stored in memory, such that C<set_wd('-')> switches back and forth between two directories. The module never actually L<chdir>'s, it just keeps track of where the user wishes to save files.
+This working directory is always defined. The previous one is also stored in memory, such that C<set_wd('-')> switches back and forth between two directories. The module never actually C<chdir>'s, it just keeps track of where the user wishes to save files.
 
 =back
 
@@ -1264,9 +1264,11 @@ Returns the schema version of a GPX document. Versions 1.0 and 1.1 are supported
 
 =head1 DEPENDENCIES
 
-L<DateTime::Format::ISO8601>,
 L<DateTime>,
+L<DateTime::Format::ISO8601>,
+L<Geo::Coordinates::Transform>,
 L<HTML::Entities>,
+L<Math::Trig>,
 L<Scalar::Util>,
 L<XML::Descent>
 
