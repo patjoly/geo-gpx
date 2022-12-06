@@ -1198,7 +1198,11 @@ sub set_wd {
         $dir =~ s/~/$ENV{'HOME'}/ if $dir =~ /^~/;
         $dir = $o->_set_wd_old    if $dir eq '-';
 
-        if ($dir =~ m,^[^/], ) {                # convert rel path to full
+        my $is_relative_path;
+        $is_relative_path = 1 if $dir =~ m,^[^/],;
+        $is_relative_path = 0 if $^O eq 'MSWin32' and $dir =~ m/^[A-Z]:/;
+
+        if ($is_relative_path) {                # convert rel path to full
             $dir =  $first_call ? cwd . '/' . $dir : $o->{work_dir} . $dir
         }
         $dir =~ s,/*$,/,;                       # some more cleaning
