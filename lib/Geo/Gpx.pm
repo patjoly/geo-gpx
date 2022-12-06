@@ -1153,8 +1153,10 @@ sub set_filename {
     my ($name, $path, $ext);
     ($name, $path, $ext) = fileparse( $fname, '\..*' );
     if ($wd) {
-        if ( ! ($fname =~ /^\// ) ) {
-            # ie if fname is not an abolsute path, adjust $path to be relative to work_dir
+        my $is_relative_path;
+        $is_relative_path = 1 if $fname =~ m,^[^/],;
+        $is_relative_path = 0 if $^O eq 'MSWin32' and $fname =~ m/^[A-Z]:/;
+        if ($is_relative_path) {
             ($name, $path, $ext) = fileparse( $wd . $fname, '\..*' )
         }
     }
