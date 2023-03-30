@@ -394,9 +394,11 @@ sub waypoints_search {
 
 =item waypoints_clip( $name | $regex | LIST )
 
+=item way_clip( )
+
 Sends the coordinates of the waypoint(s) whose name is either C<$name> or matches C<$regex> to the clipboard (all points found are sent to the clipboard) and returns an array of points found. By default, the regex is case-sensitive; specify C<qr/(?i:...)/> to ignore case.
 
-Alternatively, an array of C<Geo::GXP::Points> can be provided.
+Alternatively, an array of C<Geo::GXP::Points> can be provided. C<way_clip()> is a short-hand for this method (convenient when used interactively in the debugger).
 
 This method is only supported on unix-based systems that have the C<xclip> utility installed (see DEPENDENCIES).
 
