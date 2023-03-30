@@ -392,6 +392,48 @@ sub waypoints_search {
 
 =over 4
 
+=item waypoints_clip( $name | $regex | LIST )
+
+Sends the coordinates of the waypoint(s) whose name is either C<$name> or matches C<$regex> to the clipboard (all points found are sent to the clipboard) and returns an array of points found. By default, the regex is case-sensitive; specify C<qr/(?i:...)/> to ignore case.
+
+Alternatively, an array of C<Geo::GXP::Points> can be provided.
+
+This method is only supported on unix-based systems that have the C<xclip> utility installed (see DEPENDENCIES).
+
+=back
+
+=cut
+
+sub way_clip { waypoints_clip( @_ ) }
+sub waypoints_clip {
+    my $gpx = shift;
+
+    my @points;
+    if ( blessed $_[0] and $_[0]->isa('Geo::Gpx::Point' )) {
+        @points = @_
+    } else {
+        my $first_arg = shift;
+        if ( ref( $first_arg ) eq 'Regexp' )  {
+            @points = $gpx->waypoints_search( name => $first_arg )
+        } else {
+            my $match = $gpx->waypoints( name => $first_arg );
+            push @points, $match if $match
+        }
+        croak 'no point matches the supplied regex' unless @points
+    }
+    my @points_reversed = reverse @points;
+
+    for my $pt (@points_reversed) {
+        croak 'way_clip() expects list of Geo::Gpx::Point objects' unless $pt->isa('Geo::Gpx::Point');
+        my $coords = $pt->lat . ', ';
+        $coords   .= $pt->lon;
+        system("echo $coords | xclip -selection clipboard")
+    }
+    return @points
+}
+
+=over 4
+
 =item waypoints_count()
 
 returns the number of waypoints in the object.
@@ -1214,6 +1256,8 @@ L<HTML::Entities>,
 L<Math::Trig>,
 L<Scalar::Util>,
 L<XML::Descent>
+
+The C<< waypoints_clip() >> method is only supported on unix-based systems that have the C<xclip> utility installed.
 
 =head1 SEE ALSO
 
