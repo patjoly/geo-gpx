@@ -436,18 +436,6 @@ sub waypoints_clip {
 
 =over 4
 
-=item waypoints_count()
-
-returns the number of waypoints in the object.
-
-=back
-
-=cut
-
-sub waypoints_count { return scalar @{ shift->{waypoints} } }
-
-=over 4
-
 =item waypoints_delete_all()
 
 delete all waypoints. Returns true.
@@ -467,7 +455,7 @@ sub waypoints_delete_all {
 
 =item waypoint_delete( $name )
 
-delete the waypoint whose C<name> is an exact match, case sensitively. Returns true if successful, C<undef> if the name cannot be found.
+delete the waypoint whose C<name> field is an exact match for I<$name> (case sensitively). Returns true if successful, C<undef> if the name cannot be found.
 
 =back
 
@@ -488,6 +476,34 @@ sub waypoint_delete {
     }
     splice @{$gpx->{waypoints}}, $index, 1 if $found_match;
     return $found_match
+}
+
+=over 4
+
+=item waypoint_rename( $name, $new_name )
+
+rename the waypoint whose C<name> field is an exact match for I<$name> (case sensitively) to I<$new_name>. Only the first occurence with that name is modified. Returns the point's new name if successful, C<undef> otherwise.
+
+=back
+
+=cut
+
+sub waypoint_rename {
+    my $gpx = shift;
+    croak 'waypoint_rename() expects $name and $new_name as arguments' unless @_ == 2;
+    my ($name, $new_name) = @_;
+    my $ret_val;
+
+    my $iter = $gpx->iterate_waypoints();
+    while ( my $pt = $iter->() ) {
+        if (defined $pt->name) {
+            if ($pt->name eq $name) {
+                $ret_val = $pt->name( $new_name );
+                last
+            }
+        }
+    }
+    return $ret_val
 }
 
 =over 4
@@ -561,6 +577,42 @@ sub waypoint_closest_to {
 
 =over 4
 
+=item waypoints_print()
+
+print the list of waypoints to screen, along with their names and descriptions if defined. Returns true.
+
+=back
+
+=cut
+
+sub waypoints_print {
+    my $gpx = shift;
+    croak 'waypoint_print() expects no arguments' if @_;
+
+    my $iter = $gpx->iterate_waypoints();
+    while ( my $pt = $iter->() ) {
+        my ($name, $desc);
+        $name = defined $pt->name ? $pt->name : 'Unnamed';
+        $desc = defined $pt->desc ? $pt->desc : 'No description';
+        print $name, ': ', $desc, "\n\t", $pt->lat, " ", $pt->lon, "\n"
+    }
+    return 1
+}
+
+=over 4
+
+=item waypoints_count()
+
+returns the number of waypoints in the object.
+
+=back
+
+=cut
+
+sub waypoints_count { return scalar @{ shift->{waypoints} } }
+
+=over 4
+
 =item routes( integer or name => 'name' )
 
 Returns the array reference of routes when called without argument. Optionally accepts a single integer referring to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
@@ -628,6 +680,23 @@ sub routes_add {
         $c->{$_} = $opts{$_}        # need to check the $_ are legal
     }
     push @{ $o->{routes} }, $c;
+    return 1
+}
+
+=over 4
+
+=item routes_delete_all()
+
+delete all routes. Returns true.
+
+=back
+
+=cut
+
+sub routes_delete_all {
+    my $gpx = shift;
+    croak 'routes_delete_all() expects no arguments' if @_;
+    $gpx->{routes} = [];
     return 1
 }
 
@@ -729,6 +798,23 @@ sub tracks_add {
         $c->{name} = _time_epoch_to_string( $first_pt_time ) if $first_pt_time
     }
     push @{ $o->{tracks} }, $c;
+    return 1
+}
+
+=over 4
+
+=item tracks_delete_all()
+
+delete all tracks. Returns true.
+
+=back
+
+=cut
+
+sub tracks_delete_all {
+    my $gpx = shift;
+    croak 'tracks_delete_all() expects no arguments' if @_;
+    $gpx->{tracks} = [];
     return 1
 }
 
