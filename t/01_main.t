@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 28;
+use Test::More tests => 29;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -123,13 +123,20 @@ is($dist, 241.593745,                  "    waypoints_closest_to(): check the di
 
 # waypoint_rename():
 is( $o_wpt_only1->waypoint_rename('LP1', 'LP1_renamed'), 'LP1_renamed', "    waypoint_rename(): check if rename is successful");
-is( $o_wpt_only1->waypoint_rename('LP1', 'LP1_renamed'),  undef,        "    waypoint_rename(): check return value if unsuccessful");
+is( $o_wpt_only1->waypoint_rename('LP1', 'Another name'), undef,        "    waypoint_rename(): check return value if unsuccessful");
 
 # waypoint_delete():
 is( $o_wpt_only1->waypoint_delete('LP1'), undef,    "    waypoint_delete(): check return value if waypoint name is not found");
 $o_wpt_only1->waypoint_rename('LP1_renamed', 'LP1');
 is( $o_wpt_only1->waypoint_delete('LP1'), 1,        "    waypoint_delete(): check if waypoint deletion is successful");
 is( $o_wpt_only1->waypoints_count, 2,               "    waypoint_delete(): had 3 points, should now have 2");
+
+# track_rename():
+is( $o_ta->track_rename('A track with one segment', 'Single segment track'), 'Single segment track', "    track_rename(): check if rename is successful");
+# is( $o_ta->track_rename( -0, 'Really just one'), 'Really just one', "    track_rename(): check if rename is successful");
+# ... counting from the end is undocumented and will change in the future i.e. -1 will refer to last not -0
+# is( $o_ta->track_rename('A track with one segment', 'LP1_renamed'),  undef,        "    track_rename(): check return value if unsuccessful");
+# ... this one croaks instead of returing undef, I think waypoint_rename() should behave the same way and croak
 
 # save(): a few saves
 $o->set_wd( $tmp_dir );

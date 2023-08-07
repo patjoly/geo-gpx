@@ -9,7 +9,7 @@ use Carp;
 use DateTime::Format::ISO8601;
 use DateTime;
 use HTML::Entities qw( encode_entities encode_entities_numeric );
-use Scalar::Util qw( blessed );
+use Scalar::Util qw( blessed looks_like_number );
 use XML::Descent;
 use File::Basename;
 use Cwd qw(cwd abs_path);
@@ -313,7 +313,9 @@ sub clone {                     # actually it can clone anything
 
 Without arguments, returns the array reference of waypoints.
 
-With an argument, returns a reference to the waypoint whose C<name> field is an exact match with I<$name> or the one at integer index I<$int> (1-indexed). Returns C<undef> if none are found such that this method can be used to check if a specific point exists (i.e. no exception is raised if I<$name> or I<$int> do not exist) .
+With an argument, returns a reference to the waypoint whose C<name> field is an exact match with I<$name>. If an integer is specified instead of the C<name> key/value pair, returns the waypoint at position I<$int> in the array reference (1-indexed with negative integers also counting from the end of the array).
+
+Returns C<undef> if no corresponding waypoints are found such that this method can be used to check if a specific point exists (i.e. no exception is raised if I<$name> or I<$int> do not exist) .
 
 =back
 
@@ -330,7 +332,10 @@ sub waypoints {
             $waypoint = $pt if $pt->name eq $_[1]
         }
     } else {
-        $waypoint = $aref->[ ($_[0] - 1) ]
+        my $index = $_[0];
+        croak 'waypoints are 1-indexed, please specify a non-zero integer' if $index==0;
+        $index -= 1 if $index > 0;          # such that -1, -2, still count from end
+        $waypoint = $aref->[ $index ]
     }
     return $waypoint
 }
@@ -363,7 +368,13 @@ sub waypoints_add {
         croak "'lat' and 'lon' keys are mandatory in waypoint hash"
             unless exists $wpt->{lon} && exists $wpt->{lat};
 
-        push @{ $self->{waypoints} }, Geo::Gpx::Point->new( %$wpt )
+        my $pt = Geo::Gpx::Point->new( %$wpt );
+
+        if (defined $pt->name ) {
+            my $new_name = $pt->name;
+            croak "there already is a waypoint named $new_name, please select another name" if $self->waypoints( 'name' => $new_name );
+        }
+        push @{ $self->{waypoints} }, $pt
     }
     #TODO: Should return 1
 }
@@ -482,7 +493,7 @@ sub waypoint_delete {
 
 =item waypoint_rename( $name, $new_name )
 
-rename the waypoint whose C<name> field is an exact match for I<$name> (case sensitively) to I<$new_name>. Only the first occurence with that name is modified. Returns the point's new name if successful, C<undef> otherwise.
+rename the waypoint whose C<name> field is an exact match for I<$name> (case sensitively) to I<$new_name>. Returns the point's new name if successful, C<undef> otherwise.
 
 =back
 
@@ -493,6 +504,8 @@ sub waypoint_rename {
     croak 'waypoint_rename() expects $name and $new_name as arguments' unless @_ == 2;
     my ($name, $new_name) = @_;
     my $ret_val;
+
+    croak "there already is a waypoint named $new_name, please select another name" if $gpx->waypoints( 'name' => $new_name );
 
     my $iter = $gpx->iterate_waypoints();
     while ( my $pt = $iter->() ) {
@@ -587,7 +600,7 @@ print the list of waypoints to screen, along with their names and descriptions i
 
 sub waypoints_print {
     my $gpx = shift;
-    croak 'waypoint_print() expects no arguments' if @_;
+    croak 'waypoints_print() expects no arguments' if @_;
 
     my $iter = $gpx->iterate_waypoints();
     while ( my $pt = $iter->() ) {
@@ -615,7 +628,7 @@ sub waypoints_count { return scalar @{ shift->{waypoints} } }
 
 =item routes( integer or name => 'name' )
 
-Returns the array reference of routes when called without argument. Optionally accepts a single integer referring to the route number from routes aref (1-indexed) or a key value pair with the name of the route to be returned.
+Returns the array reference of routes when called without argument. Optionally accepts a single integer referring to the route number from routes aref (1-indexed with negative integers also counting from the end of the array) or a key value pair with the name of the route to be returned.
 
 =back
 
@@ -631,7 +644,11 @@ sub routes {
         }
         croak "no route named $_[1] in route list" unless $route
     } else {
-        $route = $o->{routes}[($_[0] - 1)];
+        my $index = $_[0];
+        croak 'routes are 1-indexed, please specify a non-zero integer' if $index==0;
+
+        $index -= 1 if $index > 0;          # such that -1, -2, still count from end
+        $route = $o->{routes}[ $index ];
         croak "route $_[0] not found" unless $route
     }
     return $route
@@ -716,7 +733,7 @@ sub routes_count { return scalar @{ shift->{routes} } }
 
 =item tracks( integer or name => 'name' )
 
-Returns the array reference of tracks when called without argument. Optionally accepts a single integer referring to the track number from tracks aref (1-indexed) or a key value pair with the name of the track to be returned.
+Returns the array reference of tracks when called without argument. Optionally accepts a single integer referring to the track number from the tracks aref (1-indexed with negative integers also counting from the end of the array) or a key value pair with the name of the track to be returned.
 
 =back
 
@@ -732,7 +749,11 @@ sub tracks {
         }
         croak "no track named $_[1] in track list" unless $track
     } else {
-        $track = $o->{tracks}[($_[0] - 1)];
+        my $index = $_[0];
+        croak 'tracks are 1-indexed, please specify a non-zero integer' if $index==0;
+
+        $index -= 1 if $index > 0;          # such that -1, -2, still count from end
+        $track = $o->{tracks}[ $index ];
         croak "track $_[0] not found" unless $track
     }
     return $track
@@ -815,6 +836,57 @@ sub tracks_delete_all {
     my $gpx = shift;
     croak 'tracks_delete_all() expects no arguments' if @_;
     $gpx->{tracks} = [];
+    return 1
+}
+
+=over 4
+
+=item track_rename( $name, $new_name )
+
+rename the track whose C<name> field is an exact match for I<$name> (case sensitively) to I<$new_name>. Returns the track's new name if successful, C<undef> otherwise.
+
+Alternatively, an integer may be specified as the first argument, referring to the track number from tracks aref (1-indexed). This is a convenience as it is quite common for tracks to be named with the timestamp fo the first point.
+
+=back
+
+=cut
+
+sub track_rename {
+    my $gpx = shift;
+    croak 'track_rename() expects $name (or an integer) and $new_name as arguments' unless @_ == 2;
+    my ($first_arg, $new_name) = @_;
+
+    for my $t ( @{ $gpx->{tracks} } ) {
+        croak "there already is a track named $new_name, please select another name" if $t->{'name'} eq $new_name
+    }
+
+    my $track;
+    my $is_index = looks_like_number( $first_arg );
+    $track = $is_index ? $gpx->tracks( $first_arg ) : $gpx->tracks( name => $first_arg );
+
+    if (defined $track) {
+        return $track->{'name'} = $new_name
+    }
+    return undef
+}
+
+=over 4
+
+=item tracks_print()
+
+print the list of tracks to screen, by their C<name> field. Returns true.
+
+=back
+
+=cut
+
+sub tracks_print {
+    my $gpx = shift;
+    croak 'tracks_print() expects no arguments' if @_;
+
+    for my $t ( @{ $gpx->{tracks} } ) {
+        print $t->{'name'}, "\n"
+    }
     return 1
 }
 
