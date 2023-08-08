@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 29;
+use Test::More tests => 30;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -137,6 +137,10 @@ is( $o_ta->track_rename('A track with one segment', 'Single segment track'), 'Si
 # ... counting from the end is undocumented and will change in the future i.e. -1 will refer to last not -0
 # is( $o_ta->track_rename('A track with one segment', 'LP1_renamed'),  undef,        "    track_rename(): check return value if unsuccessful");
 # ... this one croaks instead of returing undef, I think waypoint_rename() should behave the same way and croak
+
+# track_delete():
+$o_ta->track_delete( 'Single segment track' );
+is($o_ta->tracks_count, 1,             "    tracks_delete(): test the number of tracks remaining");
 
 # save(): a few saves
 $o->set_wd( $tmp_dir );

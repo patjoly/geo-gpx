@@ -841,6 +841,30 @@ sub tracks_delete_all {
 
 =over 4
 
+=item track_delete( $name )
+
+delete the track whose C<name> field is an exact match for I<$name> (case sensitively). Returns true if successful, C<undef> if the name cannot be found.
+
+=back
+
+=cut
+
+sub track_delete {
+    my ($gpx, $name) = @_;
+    my ($index, $found_match) = (0, undef);
+    for my $t ( @{ $gpx->{tracks} } ) {
+        if ($t->{name} eq $name) {
+            $found_match = 1;
+            last
+        }
+        ++$index
+    }
+    splice @{$gpx->{tracks}}, $index, 1 if $found_match;
+    return $found_match
+}
+
+=over 4
+
 =item track_rename( $name, $new_name )
 
 rename the track whose C<name> field is an exact match for I<$name> (case sensitively) to I<$new_name>. Returns the track's new name if successful, C<undef> otherwise.
@@ -857,7 +881,7 @@ sub track_rename {
     my ($first_arg, $new_name) = @_;
 
     for my $t ( @{ $gpx->{tracks} } ) {
-        croak "there already is a track named $new_name, please select another name" if $t->{'name'} eq $new_name
+        croak "there already is a track named $new_name, please select another name" if $t->{name} eq $new_name
     }
 
     my $track;
@@ -865,7 +889,7 @@ sub track_rename {
     $track = $is_index ? $gpx->tracks( $first_arg ) : $gpx->tracks( name => $first_arg );
 
     if (defined $track) {
-        return $track->{'name'} = $new_name
+        return $track->{name} = $new_name
     }
     return undef
 }
@@ -885,7 +909,7 @@ sub tracks_print {
     croak 'tracks_print() expects no arguments' if @_;
 
     for my $t ( @{ $gpx->{tracks} } ) {
-        print $t->{'name'}, "\n"
+        print $t->{name}, "\n"
     }
     return 1
 }
