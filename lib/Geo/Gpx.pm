@@ -140,7 +140,7 @@ sub new {
             my ($fh, $arg);
             $arg = $args{input};
             $arg =~ s/~/$ENV{'HOME'}/ if $arg =~ /^~/;
-            if (-f $arg && $arg !~ /^GLOB/) {
+            if (-f $arg and $arg !~ /^GLOB/) {
                 open( $fh , '<', $arg ) or  die "can't open file $arg $!";
                 $self->_parse( $fh );
                 $self->set_filename($arg)

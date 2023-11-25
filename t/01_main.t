@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 30;
+use Test::More tests => 31;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -37,6 +37,11 @@ isa_ok ($o_trk_only1,  'Geo::Gpx');
 my $fname_trk2 = 't/larose_trk2.gpx';
 my $o_trk_only2 = Geo::Gpx->new( input => "$fname_trk2" );
 isa_ok ($o_trk_only2,  'Geo::Gpx');
+
+# new(): from filehandle
+open( my $fh , '<', $fname_wpt1 ) or  die "can't open file $fname_wpt1 $!";
+my $o_from_fh = Geo::Gpx->new( input => $fh );
+isa_ok ($o_from_fh,  'Geo::Gpx');
 
 # NextSteps: create a new empty gpx file, add the waypoints, add a track, then add another track (do we have a method to add another track like waypoints_add()
 
