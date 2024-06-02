@@ -555,37 +555,71 @@ sub waypoints_merge {
 
 =over 4
 
-=item waypoint_closest_to( $point of $tcx_trackpoint )
+=item waypoint_closest_to( $point or $tcx_trackpoint )
 
-From any L<Geo::Gpx::Point> or L<Geo::TCX::Trackpoint> object, return the waypoint that is closest to it. If called in list context, returns a two-element array consisting of that waypoint, and the distance from the coordinate (in meters).
+=item trackpoint_closest_to( … )
+
+=item routepoint_closest_to( … )
+
+=item point_closest_to( … )
+
+From any L<Geo::Gpx::Point> or L<Geo::TCX::Trackpoint> object, return the L<Geo::Gpx::Point> that is closest to it. If called in list context, returns a two-element array consisting of that point, and the distance from the coordinate (in meters).
 
 =back
 
 =cut
 
 sub waypoint_closest_to {
-    my ($gpx, $to_pt) = (shift, shift);
-    my $croak_msg = 'waypoint_closest_to() expects a single argument in the form of Garmin::TCX::Trackpoint or Geo::Gpx::Point';
+    my $gpx = shift;
+    my ($closest_pt, $min_dist) = _iterate_and_find_closest_to( $gpx->iterate_waypoints, @_ );
+    return ($closest_pt, $min_dist) if wantarray;
+    return $closest_pt
+}
+
+sub trackpoint_closest_to {
+    my $gpx = shift;
+    my ($closest_pt, $min_dist) = _iterate_and_find_closest_to( $gpx->iterate_trackpoints, @_ );
+    return ($closest_pt, $min_dist) if wantarray;
+    return $closest_pt
+}
+
+sub routepoint_closest_to {
+    my $gpx = shift;
+    my ($closest_pt, $min_dist) = _iterate_and_find_closest_to( $gpx->iterate_routepoints, @_ );
+    return ($closest_pt, $min_dist) if wantarray;
+    return $closest_pt
+}
+
+sub point_closest_to {
+    my $gpx = shift;
+    my ($closest_pt, $min_dist) = _iterate_and_find_closest_to( $gpx->iterate_points, @_ );
+    return ($closest_pt, $min_dist) if wantarray;
+    return $closest_pt
+}
+
+sub _iterate_and_find_closest_to {
+    my ($iterator, $to_pt) = (shift, shift);
+    my ($method_name, @caller);
+    @caller = caller(1);
+    ($method_name = $caller[3]) =~ s/.*::(.*)/$1()/;
+
+    my $croak_msg = $method_name . ' expects a single argument in the form of a Geo::Gpx::Point or Geo::TCX::Trackpoint';
     if (ref $to_pt) {
-        croak $croak_msg unless $to_pt->isa('Geo::TCX::Trackpoint') or $to_pt->isa('Geo::Gpx::Point')
+        croak $croak_msg unless $to_pt->isa('Geo::Gpx::Point') or $to_pt->isa('Geo::TCX::Trackpoint')
     } else { croak $croak_msg }
     croak $croak_msg if @_;
 
     my ($closest_pt, $min_dist);
-    my $iter = $gpx->iterate_waypoints();
-    while ( my $pt = $iter->() ) {
+    while ( my $pt = $iterator->() ) {
         my $distance = $to_pt->distance_to( $pt );
-        $min_dist = $distance unless (defined $min_dist); # nb: $min_dist can be 0
+        $min_dist = $distance if ! defined $min_dist;       # $min_dist can be 0
         $closest_pt ||= $pt;
         if ($distance < $min_dist) {
-# print $pt->name, " distance is smaller at: ", $distance, "\n";
-# $DB::single=1;
             $closest_pt = $pt;
             $min_dist   = $distance
         }
     }
-    return ($closest_pt, $min_dist) if wantarray;
-    return $closest_pt
+    return ($closest_pt, $min_dist)
 }
 
 =over 4
