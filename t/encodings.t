@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 10;
+use Test::More tests => 12;
 use Encode;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
@@ -12,7 +12,7 @@ my $cwd     = abs_path( cwd() );
 my $tmp_dir = tempdir( CLEANUP => 1 );
 
 my $wpt1 = { lat => 45.93789, lon => -75.85077, ele => 550, time => 1167813923, name => 'é è à ï', desc => 'Un waypoint nommé é è à ï', sym => 'pin', };
-my $wpt2 = { lat => 45.93678, lon => -75.85093, ele => 548, time => 1167814115, name => 'α β è γ', desc => 'Un waypoint nommé alpha, beta, e accent grave & gamma', sym => 'Flag, Blue', };
+my $wpt2 = { lat => 45.93678, lon => -75.85093, ele => 548, time => 1167814115, name => 'α β\' è γ', desc => 'Un waypoint nommé alpha, beta prime, e accent grave & gamma', sym => 'Flag, Blue', };
 my $wpt3 = { lat => 45.94636, lon => -76.01154, time => 1167810723,  sym => 'Parking Area' };
 
 #
@@ -29,7 +29,11 @@ is($o->waypoints_count, 3,          "    waypoints_add(): waypoints with unicode
 
 $o->save( filename => 'test_unicode.gpx', force => 1);
 my $o_copy  = Geo::Gpx->new( input => $tmp_dir . '/test_unicode.gpx' );
-isa_ok ($o,  'Geo::Gpx');
+isa_ok ($o_copy,  'Geo::Gpx');
+
+$o->save( filename => 'test_unicode_explicit_unsafe_chars.gpx', unsafe_chars => "<>&\"'", force => 1);
+my $o_copy2  = Geo::Gpx->new( input => $tmp_dir . '/test_unicode_explicit_unsafe_chars.gpx' );
+isa_ok ($o_copy2,  'Geo::Gpx');
 
 # TODO: should be compare the 2 objects, like a deep compare? Look into it.
 
@@ -66,6 +70,12 @@ isnt($desc4, $expect_not,             "    new(): read xml with accented charact
 my @search;
 @search = $o->waypoints_search( name => qr/(?i:[è])/);
 is( @search, 2,                     "    waypoints_search(): search waypoints based on unicode character");
+
+# waypoints_search() with unicode characters in their name -- example with greek letter
+my $mixed2 = $mixed1->clone();
+$mixed2->waypoints_add( $wpt2 );
+@search = $mixed2->waypoints_search( name => qr/β/);
+is( @search, 3,                     "    waypoints_search(): search waypoints based on unicode character");
 
 # $DB::single=1;
 

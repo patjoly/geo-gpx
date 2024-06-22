@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 6;
+use Test::More tests => 7;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -36,11 +36,21 @@ $return_tag = Geo::Gpx::_tag( $uc, $tag, {}, @cont );
 is($return_tag, $expect_tag,            "    _tag(): as called by _xml() with an empty href");
 
 #
+# _tag() -- as called by itself
+
+#      . with an empty href
+$tag = 'name';
+my $value = 'α β\' è γ';
+$expect_tag = "<name>α β' è γ</name>\n";
+$return_tag = Geo::Gpx::_tag( $uc, $tag, {}, Geo::Gpx::_enc( $value, $uc ) );
+is($return_tag, $expect_tag,            "    _tag(): as called by itself with an empty href");
+
+#
 # _xml() -- as called by xml()
 
 #      . with a href
 my $name = 'wpt';
-my $value = {
+$value = {
    'cmt' => 'Larose P1 - Limoges\' Parking',
    'desc' => 'Larose P1 - Limoges - Stationnement & début des trails',
    'ele' => 73,
@@ -65,8 +75,8 @@ is($return__xml, $expect__xml,            "    _xml(): as called by xml() with a
 #      . with a scalar
 $name  = 'desc';
 $value = 'Larose P1 - Limoges';
-$expect_tag = "<desc>Larose P1 - Limoges</desc>\n";
+$expect__xml= "<desc>Larose P1 - Limoges</desc>\n";
 $return__xml = $o->_xml( $uc, $name, $value );
-is($return_tag, $expect_tag,            "    _tag(): as called by _xml() with a scalar as \$value");
+is($return__xml, $expect__xml,            "    _xml(): as called by _xml() with a scalar as \$value");
 
 print "so debugger doesn't exit\n";
