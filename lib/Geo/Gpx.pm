@@ -1180,7 +1180,7 @@ If C<version> is omitted, it defaults to the value of the C<version> attribute. 
 
 C<unsafe_chars> can be provided to specify which characters to consider unsafe in generating the XML mark-up. This field is then passed through to L<HTML::Entities> function calls whose documentation describes that this field is "specified using the regular expression character class syntax (what you find within brackets in regular expressions)".
 
-As of version I<1.11> of C<Geo::Gpx>, the default set of characters are the C<< '<' >>, C<'&'>, C<< '>' >>, C<'"'> characters. To revert to the pre-version I<1.11> default, which is equivalent to that in <C<HTML::Entities>, explicitely specify C<< unsafe_chars => undef >>. This will encode as the latter module describes the "control chars, high-bit chars, and the C<< '<' >>, C<'&'>, C<< '>' >>, C<< "'" >>, C<'"'> characters".
+As of version I<1.11> of C<Geo::Gpx>, the default set of characters are the C<< '<' >>, C<'&'>, C<< '>' >>, C<'"'> characters. To revert to the pre-version I<1.11> default, which is equivalent to that in <C<HTML::Entities>, explicitly specify C<< unsafe_chars => undef >>. This will encode as the latter module describes the "control chars, high-bit chars, and the C<< '<' >>, C<'&'>, C<< '>' >>, C<< "'" >>, C<'"'> characters".
 
 =cut
 
