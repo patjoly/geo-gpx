@@ -12,7 +12,7 @@ Geo::Gpx::Point - Class to store and edit GPX Waypoints
 
 =head1 SYNOPSIS
 
-  use Geo::Gpx::Point;
+    use Geo::Gpx::Point;
 
 =head1 DESCRIPTION
 
@@ -59,6 +59,9 @@ sub new {
     my %fields = @_;
     my $wpt = {};
     bless( $wpt, $class);
+
+    croak "'lat' and 'lon' keys are mandatory fields"
+            unless exists $fields{lon} && exists $fields{lat};
 
     foreach my $key ( keys %fields ) {
         if ( $possible_attr{ $key } ) {
@@ -134,11 +137,12 @@ Returns a deep copy of the C<Geo::Gpx::Point>.
 sub clone {
     my $pt = shift;
     croak 'clone() expects no arguments' if @_;
-    my %fields;
-    foreach my $key (keys %{$pt}) {
-        $fields{$key} = $pt->{$key}
-    }
-    return $pt->new( %fields )
+    my $class = ref($pt);
+
+    my $clone;
+    %{$clone} = %{$pt};
+    bless( $clone, $class );
+    return $clone
 }
 
 =head2 AUTOLOAD Methods

@@ -350,16 +350,19 @@ sub waypoints {
 
 =over 4
 
-=item waypoints_add( $point or \%point [, $point or \%point, … ] )
+=item waypoints_add( $point or \%fields [, $point or \%fields, … ] )
 
-Add one or more waypoints. Each waypoint must be either a L<Geo::Gpx::Point> or a hash reference with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
+Add copies of one or more waypoints to the instance. Each waypoint must be either a L<Geo::Gpx::Point> or a hash reference with fields that can be parsed by L<Geo::Gpx::Point>'s C<new()> constructor. See the later for the possible fields.
 
-  %point = ( lat => 54.786989, lon => -2.344214, ele => 512, name => 'My house' );
-  $gpx->waypoints_add( \%point );
+The points supplied as argument are always left intact (i.e. the copies added are clones and not references).
+
+  %fields = ( lat => 54.786989, lon => -2.344214, ele => 512, name => 'My house' );
+
+  $gpx->waypoints_add( \%fields );
 
     or
 
-  $pt = Geo::Gpx::Point->new( %point );
+  $pt = Geo::Gpx::Point->new( %fields );
   $gpx->waypoints_add( $pt );
 
 =back
@@ -370,13 +373,16 @@ sub waypoints_add {
     my $self = shift;
 
     for my $wpt ( @_ ) {
-        eval { keys %$wpt };
-        croak "waypoint argument must be a hash reference" if $@;
 
-        croak "'lat' and 'lon' keys are mandatory in waypoint hash"
-            unless exists $wpt->{lon} && exists $wpt->{lat};
+        my $pt;
+        if ( blessed $wpt and $wpt->isa('Geo::Gpx::Point') ) {
+            $pt = $wpt->clone
+        } else {
+            eval { keys %$wpt };
+            croak "arguments must be a list of Geo::Gpx::Point's or a list of hash references that can be interpreted as points" if $@;
 
-        my $pt = Geo::Gpx::Point->new( %$wpt );
+            $pt = Geo::Gpx::Point->new( %$wpt )
+        }
 
         if (defined $pt->name ) {
             my $new_name = $pt->name;

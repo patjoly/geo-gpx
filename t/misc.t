@@ -50,7 +50,7 @@ my @wpt  = (
 {
   my $gpx = new Geo::Gpx;
   eval { $gpx->waypoints_add( [] ) };
-  like $@, qr/waypoint argument must be a hash reference/,
+  like $@, qr/arguments must be a list of Geo::Gpx::Point's or a list of hash references/,
    "type check OK";
 }
 
@@ -58,7 +58,7 @@ my @wpt  = (
   for my $wpt ( {}, { lat => 1 }, { lon => 1 } ) {
     my $gpx = new Geo::Gpx;
     eval { $gpx->waypoints_add( $wpt ) };
-    like $@, qr/mandatory in waypoint/, "mandatory lat, lon OK";
+    like $@, qr/mandatory fields/, "mandatory lat, lon OK";
   }
 }
 
