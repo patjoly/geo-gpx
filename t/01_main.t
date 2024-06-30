@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 38;
+use Test::More tests => 52;
 use Geo::Gpx;
 use File::Temp qw/ tempfile tempdir /;
 use Cwd qw(cwd abs_path);
@@ -188,6 +188,47 @@ $o_ta->tracks_delete_all;
 is( $o_ta->tracks_count, 0,            "    waypoints_delete_all(): count should now be 0");
 $o_ta->routes_delete_all;
 is( $o_ta->routes_count, 0,            "    waypoints_delete_all(): count should now be 0");
+
+#
+# Section C - precision
+
+# constructor option
+
+# waypoints_add() when Gpx instance has precision set
+$o  = Geo::Gpx->new( precision => 4 );
+isa_ok ($o,  'Geo::Gpx');
+$o->waypoints_add( $href_chez_andy, $href_chez_pat );
+$o->waypoints_add( $href_chez_kaz );
+is($o->waypoints(1)->lat, '54.7870',    "    waypoints_add(): with instance precision => 4");
+is($o->waypoints(2)->lon, -2.3442,      "    waypoints_add(): with instance precision => 4");
+is($o->waypoints(3)->lon, -76.0115,     "    waypoints_add(): with instance precision => 4");
+
+# new(): from filename (file with only waypoints) with precision option
+my $o_wpt = Geo::Gpx->new( input => "$fname_wpt1", precision => 5 );
+isa_ok ($o_wpt, 'Geo::Gpx');
+is($o_wpt->waypoints(2)->lat,  45.40469,      "    new(): with precision => 5 -- waypoints");
+is($o_wpt->waypoints(3)->lon, '-75.23973',    "    new(): with precision => 5 -- waypoints");
+
+# new(): from filename (file with only trackpoints) with precision option
+my $o_trk = Geo::Gpx->new( input => "$fname_trk1", precision => 3 );
+isa_ok ($o_trk, 'Geo::Gpx');
+my @points;
+my $iter = $o_trk->iterate_trackpoints();
+while ( my $pt = $iter->() ) {
+    push @points, $pt
+}
+is($points[0]->lat,   45.405,      "    new(): with precision => 3 -- trackpoints");
+is($points[0]->lon,  -75.139,      "    new(): with precision => 3 -- trackpoints");
+
+# precision method
+
+$o->precision(3);
+is($o->waypoints(3)->lat, 45.946,       "    precision(): effect of precision method immediately after setting on an instance");
+is($o->waypoints(3)->lon, -76.012,      "    precision(): effect of precision method immediately after setting on an instance");
+$o->waypoint_delete( 'Atop Radar Road' );
+$o->waypoints_add( $href_chez_pat );
+is($o->waypoints(3)->lat, 45.938,       "    waypoints_add(): after setting with precision() method");
+is($o->waypoints(3)->lon, -2.344,       "    waypoints_add(): after setting with precision() method");
 
 print "so debugger doesn't exit\n";
 

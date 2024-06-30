@@ -36,7 +36,7 @@ $possible_attr{$_} = 1 for @attr;
 
 =over 4
 
-=item new( lat => $lat, lon => $lon [, ele => $ele, desc => $desc, … ] )
+=item new( lat => $lat, lon => $lon [, ele => $ele, desc => $desc, … ] [, precision => $int ] )
 
 Create and return a new point as per the fields provided, which can be any of C<lat lon ele time magvar geoidheight name cmt desc src link sym type fix sat hdop vdop pdop ageofdgpsdata dgpsid>. Most expect numberial values except: C<name>, C<cmt>, C<desc>, C<src>, C<sym>, C<type>, C<fix> that can contain strings.
 
@@ -48,6 +48,8 @@ C<lat> and C<lon> are required, all others keys are optional.
 The C<link> field is expected to be structured as:
 
   link => { href => 'http://hexten.net/', text => 'Hexten', type => 'Blah' },
+
+C<< precision => $int >> is an optional setting to indicate the number (I<$int>, an integer) of decimal-digits to be used to store the point's coordinates. This is not a point field per se and is not saved per se when calling L<Geo::Gpx>save() or when generating an xml(); the point is simply rendered as formatted (by C<sprintf()>) at instanciation.
 
 =back
 
@@ -63,10 +65,26 @@ sub new {
     croak "'lat' and 'lon' keys are mandatory fields"
             unless exists $fields{lon} && exists $fields{lat};
 
+    if ( $fields{precision} ) {
+        $wpt->precision( $fields{precision} )
+    } else {
+        $wpt->precision( -1 )
+    }
+    delete $fields{precision} if exists $fields{precision};
+
     foreach my $key ( keys %fields ) {
-        if ( $possible_attr{ $key } ) {
-            $wpt->{ $key } = $fields { $key }
-        } else { croak "field '$key' not supported" }
+        croak "field '$key' not supported" unless $possible_attr{ $key };
+        my $value = $fields{ $key };
+
+        if ($key eq 'lat') {
+            $wpt->lat( $value );
+            next
+        }
+        if ($key eq 'lon') {
+            $wpt->lon( $value );
+            next
+        }
+        $wpt->{ $key } = $value
     }
 
     if (defined $wpt->{time} and $wpt->{time} =~ /-|:/ ) {
@@ -151,10 +169,10 @@ sub clone {
 
 =item I<field>( $value )
 
-Methods with respect to fields of the object can be autoloaded.
+Methods with respect to fields of the object can be autoloaded, with the exception of C<lat>, C<lon> which have their own accessor methods.
 
 Possible fields consist of those listed and accepted by C<new()>, specifically:
-lat, lon, ele, time, magvar, geoidheight, name, cmt, desc, src, link, sym, type, fix, sat, hdop, vdop, pdop, ageofdgpsdata, and dgpsid.
+ele, time, magvar, geoidheight, name, cmt, desc, src, link, sym, type, fix, sat, hdop, vdop, pdop, ageofdgpsdata, and dgpsid.
 
 Some fields may contain a value of 0. It is safer to check if a field is defined with C<< if (defined $point->ele) >> rather than C<< if ($point->ele) >>.
 
@@ -175,6 +193,52 @@ sub AUTOLOAD {
 }
 
 =head2 Object Methods
+
+=over 4
+
+=item lat( [ $latitude ] )
+
+sets/gets the latitude of the point.
+
+=back
+
+=cut
+
+sub lat {
+    my ($pt, $value) = @_;
+    if (defined $value) {
+        $pt->{_supplied_lat} = $value
+    } else {
+        $value = $pt->{_supplied_lat}
+    }
+    # re-format at each call bcs precision/format may have changed
+    $value = sprintf( $pt->{_coord_format}, $value ) if defined $pt->precision;
+    $pt->{lat} = $value;
+    return $pt->{lat}
+}
+
+=over 4
+
+=item lon( [ $longitude ] )
+
+sets/gets the longitude of the point.
+
+=back
+
+=cut
+
+sub lon {
+    my ($pt, $value) = @_;
+    if (defined $value) {
+        $pt->{_supplied_lon} = $value
+    } else {
+        $value = $pt->{_supplied_lon}
+    }
+    # re-format at each call bcs precision/format may have changed
+    $value = sprintf( $pt->{_coord_format}, $value ) if defined $pt->precision;
+    $pt->{lon} = $value;
+    return $pt->{lon}
+}
 
 =over 4
 
@@ -278,6 +342,36 @@ sub time_datetime    {
     my $dt = DateTime->from_epoch( epoch => $pt->time );
     $dt->set_time_zone( $opts{time_zone} ) if $opts{time_zone};
     return  $dt
+}
+
+=over 4
+
+=item precision( [ integer ] )
+
+sets/gets the number of decimal-digits used to store the coordinates (latitude, longitude).
+
+Can be called with C<-1> unset the level of precision so as to not format the point to any particular number of decimal-point.
+
+Returns C<undef> if the level of precision is not set.
+
+=back
+
+=cut
+
+sub precision {
+    my ($pt, $precision) = @_;
+    if (defined $precision) {
+        if ($precision < 0 ) {
+            $pt->{_precision}    = undef;
+            $pt->{_coord_format} = undef
+        } else {
+            $pt->{_precision}    = int( $precision );
+            $pt->{_coord_format} = '%.' . int ( $precision ). 'f'
+        }
+        $pt->lat if defined $pt->{lat};     # call will re-format the point
+        $pt->lon if defined $pt->{lon};     # call will re-format the point
+    }
+    return $pt->{_precision}
 }
 
 =over 4

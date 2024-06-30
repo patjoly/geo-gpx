@@ -119,11 +119,13 @@ sub _init_shiny_new {
 
 =over 4
 
-=item new( input => ($fname | $fh) or xml => $xml [, work_dir => $working_directory ] )
+=item new( input => ($fname | $fh) or xml => $xml [, work_dir => $working_directory, precision => $int ] )
 
 Create and return a new C<Geo::Gpx> instance based on a *.gpx file (I<$fname>), an open filehandle (I<$fh>), or an XML string (I<$xml>). GPX 1.0 and 1.1 are supported.
 
 The optional C<work_dir> (or C<wd> for short) specifies where to save any working files, such as with the save() method. It can be supplied as a relative path or as an absolute path. If C<work_dir> is omitted, it is set based on the path of the I<$fname> supplied or the current working directory if the constructor is called with an XML string or a filehandle (see C<< set_wd() >> for more info).
+
+C<< precision => $int >> is an optional setting to indicate the number (I<$int>, an integer) of decimal-digits to be used to store the coordinates of points contained in the instance. Any point added by instance methods will adhere to this setting. The setting can also be changed at any time with the C<precision()> method.
 
 =back
 
@@ -139,6 +141,12 @@ sub new {
     if ( @args % 2 == 0 ) {
         my %args = @args;
         $self->_init_shiny_new( \%args );
+
+        if ( $args{precision} ) {
+            $self->precision( $args{precision} )
+        } else {
+            $self->precision( -1 )
+        }
 
         if ( exists $args{input} ) {
             my ($fh, $arg);
@@ -197,7 +205,7 @@ sub _parse {
             my $parse_point = sub {
                 my ( $elem, $attr ) = @_;
                 my $pt = $parse_deep->( $elem, $attr );
-                return Geo::Gpx::Point->new( %{$pt} )
+                return Geo::Gpx::Point->new( %{$pt}, precision => $self->{_precision} )
                 };
 
             $p->on(
@@ -381,7 +389,7 @@ sub waypoints_add {
             eval { keys %$wpt };
             croak "arguments must be a list of Geo::Gpx::Point's or a list of hash references that can be interpreted as points" if $@;
 
-            $pt = Geo::Gpx::Point->new( %$wpt )
+            $pt = Geo::Gpx::Point->new( %$wpt, precision => $self->{_precision} )
         }
 
         if (defined $pt->name ) {
@@ -735,7 +743,7 @@ sub routes_add {
 
         for my $pt (@$aref) {
             my $is_geo_gpx_point = blessed $pt and $pt->isa('Geo::Gpx::Point');
-            $pt = Geo::Gpx::Point->new( %$pt ) unless $is_geo_gpx_point
+            $pt = Geo::Gpx::Point->new( %$pt, precision => $o->{_precision} ) unless $is_geo_gpx_point
         }
         $route->{points} = $aref
     }
@@ -849,7 +857,7 @@ sub tracks_add {
             my $points = $arefs[$i];
             for my $pt (@{$points}) {
                 my $is_geo_gpx_point = blessed $pt and $pt->isa('Geo::Gpx::Point');
-                $pt = Geo::Gpx::Point->new( %$pt ) unless $is_geo_gpx_point
+                $pt = Geo::Gpx::Point->new( %$pt, precision => $o->{_precision} ) unless $is_geo_gpx_point
             }
             $track->{segments}[$i]{points} = $points
         }
@@ -1084,6 +1092,8 @@ returns a structure like this:
 
 C<$iterator> defaults to C<$self-E<gt>iterate_points> if not specified.
 
+=back
+
 =cut
 
 sub bounds {
@@ -1102,6 +1112,36 @@ sub bounds {
             if !defined $bounds->{maxlon} || $pt->{lon} > $bounds->{maxlon};
     }
     return $bounds
+}
+
+=over 4
+
+=item precision( [ integer ] )
+
+sets/gets the number of decimal-digits used to store the coordinates of C<Geo::Gpx::Points> contained in the instance. Any point added by instance methods will adhere to this setting.
+
+Can be called with C<-1> unset the level of precision so as to not format any point to any particular number of decimal-point.
+
+Returns C<undef> if the level of precision is not set.
+
+=back
+
+=cut
+
+sub precision {
+    my ($gpx, $precision) = @_;
+    if (defined $precision) {
+        if ($precision < 0 ) {
+            $gpx->{_precision} = undef
+        } else {
+            $gpx->{_precision} = int( $precision )
+        }
+        my $iter = $gpx->iterate_points();
+        while ( my $pt = $iter->() ) {          # if too slow, provide option to not iterate
+            $pt->precision( $gpx->{_precision} )
+        }
+    }
+    return $gpx->{_precision}
 }
 
 sub _enc {
@@ -1147,6 +1187,7 @@ sub _xml {
         my %v = %{$value};
         for my $k ( @{ $KEY_ORDER{$name} || [] }, sort keys %v ) {
             if ( defined( my $vv = delete $v{$k} ) ) {
+                next if $k =~ /^_/;                         # skip any internal keys
                 if ( defined $as_attr && $k =~ $as_attr ) {
                     $attr->{$k} = $vv
                 } else {
@@ -1172,6 +1213,8 @@ sub _cmp_ver {
     }
     return @v1 <=> @v2
 }
+
+=over 4
 
 =item xml( key/values )
 

@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 11;
+use Test::More tests => 17;
 use Geo::Gpx::Point;
 
 my %point_fields = ( lat => 45.483419, lon => 75.848268, ele => 260.91, name => 'MacKing', desc => "Mackenzie King Estate");
@@ -62,9 +62,24 @@ my ($some_pt, $p4, $dist);
 $some_pt = Geo::Gpx::Point->new( lat => 45.405441, lon => -75.137497 );
 $p4      = Geo::Gpx::Point->new( lat => 45.404692031443119, lon=> -75.140401963144541 );
 $dist = $some_pt->distance_to( $p4 );
-is($dist, 241.593745,                  "    distance_to(): we get the expected distance");
+is($dist, 241.593745,                   "    distance_to(): we get the expected distance");
 $dist = $some_pt->distance_to( $p4, dec => 2 );
-is($dist, 241.59,                      "    distance_to(): we get the expected no of decimal points");
+is($dist, 241.59,                       "    distance_to(): we get the expected no of decimal points");
+
+#
+# precision option
+
+my ($pt_prec3, $pt_prec7);
+$pt_prec3 = Geo::Gpx::Point->new( %point_fields, precision => 3 );
+$pt_prec7 = Geo::Gpx::Point->new( %point_fields, precision => 7 );
+is($pt_prec3->lat, 45.483,              "    new(): with precision => 3");
+is($pt_prec7->lat, '45.4834190',        "    new(): with precision => 7");
+$pt_prec7->precision(3);
+is($pt_prec7->lat, 45.483,              "    lat(): after precision(3) call");
+is($pt_prec7->lon, 75.848,              "    lon(): after precision(3) call");
+$pt_prec7->precision(-1);
+is($pt_prec7->lat, 45.483419,           "    lat(): after precision(-1) call");
+is($pt_prec7->lon, 75.848268,           "    lon(): after precision(-1) call");
 
 #
 # Parking lot and other methods I could develop
