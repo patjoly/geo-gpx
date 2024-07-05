@@ -880,6 +880,55 @@ sub tracks_add {
 
 =over 4
 
+=item tracks_order( name => 1 | time => 1 )
+
+Orders the tracks in the instance by name or time. Serves little practical purpose for the user other than it would impact the order in which the tracks appear in the XML markup after a call to C<xml()> or C<save()>. One of C<name> or C<time> must be specified as true.
+
+Returns true.
+
+=back
+
+=cut
+
+sub tracks_order {
+    my $o = shift;
+    my %args = @_;
+    croak "tracks_order() expect one of 'name' or 'time' to be specified as true" unless $args{name} or $args{time};
+
+    my (@tracks, %order_orig);
+    @tracks = @{ $o->{tracks} };
+    for my $i (0 .. $#tracks) {
+        my $track = $tracks[$i];
+        my $field;
+        if ($args{name}) {
+            $field = $track->{name};
+            croak "track $i has no track name, cannot order tracks based on name" unless defined $field
+        }
+        if ($args{time}) {
+            # use the first point in a track -- points in tracks should all have a time but a user might have mucked with it
+            $field = $track->{segments}[0]{points}[0]->time;
+            croak "track $i has no time for it's first point, cannot order tracks based on time" unless defined $field
+        }
+        $order_orig{ $field } = $i
+    }
+    croak "field to sort on ('name' or 'time') is not unique, cannot order tracks if not unique" if @tracks != keys %order_orig;
+
+    my (@keys_sorted, %order_new, %new2old_idx, $k);
+    @keys_sorted     = sort { CORE::fc ($a) cmp CORE::fc($b) } keys %order_orig;    # case-insensitive
+    $order_new{$k++} = $_ for @keys_sorted;
+    $new2old_idx{$_} = $order_orig{ $order_new{$_} } for ( 0 .. (@tracks -1 ) );
+
+    my @tracks_new;
+    for my $i ( 0 .. (@tracks - 1) ) {
+        my $track_idx = $new2old_idx{ $i };
+        $tracks_new[ $i ] = $tracks[ $track_idx ]
+    }
+    @{ $o->{tracks} } = @tracks_new;
+    return 1
+}
+
+=over 4
+
 =item tracks_delete_all()
 
 delete all tracks. Returns true.
@@ -1229,7 +1278,7 @@ If C<version> is omitted, it defaults to the value of the C<version> attribute. 
 
 C<unsafe_chars> can be provided to specify which characters to consider unsafe in generating the XML mark-up. This field is then passed through to L<HTML::Entities> function calls whose documentation describes that this field is "specified using the regular expression character class syntax (what you find within brackets in regular expressions)".
 
-As of version I<1.11> of C<Geo::Gpx>, the default set of characters are the C<< '<' >>, C<'&'>, C<< '>' >>, C<'"'> characters. To revert to the pre-version I<1.11> default, which is equivalent to that in <C<HTML::Entities>, explicitely specify C<< unsafe_chars => undef >>. This will encode as the latter module describes the "control chars, high-bit chars, and the C<< '<' >>, C<'&'>, C<< '>' >>, C<< "'" >>, C<'"'> characters".
+As of version I<1.11> of C<Geo::Gpx>, the default set of characters are the C<< '<' >>, C<'&'>, C<< '>' >>, C<'"'> characters. To revert to the pre-version I<1.11> default, which is equivalent to that in <C<HTML::Entities>, explicitly specify C<< unsafe_chars => undef >>. This will encode as the latter module describes the "control chars, high-bit chars, and the C<< '<' >>, C<'&'>, C<< '>' >>, C<< "'" >>, C<'"'> characters".
 
 =cut
 

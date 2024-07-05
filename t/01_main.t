@@ -165,9 +165,18 @@ is( $o_ta->track_rename('A track with one segment', 'Single segment track'), 'Si
 # is( $o_ta->track_rename('A track with one segment', 'LP1_renamed'),  undef,        "    track_rename(): check return value if unsuccessful");
 # ... this one croaks instead of returing undef, I think waypoint_rename() should behave the same way and croak
 
+# tracks_order():
+$o_ta->tracks_add( $aref1, name => 'a copy of Single segment track' );
+$o_ta->{tracks}[2]{segments}[0]{points}[0]{time} = 1603661672;
+# ... we changed the time of the 1st point so that we can test time => 1 below. Based on time (name), that copy would sort after (before) the original it copied.
+my $ret_torder;
+$ret_torder = $o_ta->tracks_order( name => 1 );
+$ret_torder = $o_ta->tracks_order( time => 1 );
+# TODO: write a test
+
 # track_delete():
 $o_ta->track_delete( 'Single segment track' );
-is($o_ta->tracks_count, 1,             "    tracks_delete(): test the number of tracks remaining");
+is($o_ta->tracks_count, 2,             "    tracks_delete(): test the number of tracks remaining");
 
 # save(): a few saves
 $o->set_wd( $tmp_dir );
