@@ -1413,6 +1413,114 @@ sub TO_JSON {
 
 =over 4
 
+=item to_csv( filename => $fname, key/values )
+
+Saves the waypoints, routes, or tracks as a comma-delimited I<*.csv> file. Returns the string saved. (C<to_csv()> currently only supports C<< type => 'waypoints' >>, support for tracks and routes coming soon.)
+
+I<key/values> are:
+
+Z<>    C<filename>:  I<$fname> is required, will be saved in the instance's working directory (as in C<save()>).
+Z<>    C<type>:      must be one of C<waypoints>, C<tracks>, or C<routes>.
+Z<>    C<fields>:    if an array reference is provided with fields names, will save only the fields specified, in the order listed (defaults to false to save all fields).
+Z<>    C<no_header>: omit the first line (i.e. header line) of field names when saving (defaults to false).
+Z<>    C<force>:     overwrites existing files if true, otherwise it won't.
+
+=back
+
+=cut
+
+sub to_csv {
+    my ($o, %opts) = @_;
+    my ($fname, $is_relative_path);
+
+    my $msg_type_required = "to_csv() expect field 'type' to be one of 'waypoints', 'tracks', or 'routes'";
+    croak $msg_type_required unless defined $opts{type};
+    croak $msg_type_required unless $opts{type} =~ /^(waypoints|routes|tracks)$/;
+    croak "\$fields must be an array reference if specified" if defined $opts{fields} and (ref( $opts{fields} ) ne 'ARRAY');
+
+    croak 'filename => $fname is required' unless $opts{filename};
+    $fname = $opts{filename};
+    $is_relative_path = 1 if $fname =~ m,^[^/],;
+    $is_relative_path = 0 if $^O eq 'MSWin32' and $fname =~ m/^[A-Z]:/;
+    if ($is_relative_path) {
+        $fname = $o->set_wd() . $fname
+    }
+    croak "$fname already exists" if -f $fname and !$opts{force};
+
+    my $str;
+    if ($opts{type} eq 'waypoints') {
+        my (@exist, @want_and_exist);
+        @want_and_exist = @exist = _existing_fields( $o->iterate_waypoints() );
+        @want_and_exist          = _array_intersection( $opts{fields}, \@exist ) if defined $opts{fields};
+
+        unless (defined $opts{no_header}) {
+            $str = join(',', @want_and_exist);
+            $str .= "\n";
+        }
+
+        my $iter = $o->iterate_waypoints();
+        while ( my $pt = $iter->() ) {
+            for my $key (@want_and_exist) {
+                if (defined $pt->{$key}) {  # TODO: a bit breaking under the hood, check if can just call the accessor
+                    if ( $key =~ /^(name|desc|cmt|src|sym|type|fix|extensions)$/ ) {
+                        $str .= '"' . $pt->$key . '"'
+                    } else {
+                        $str .= $pt->$key
+                    }
+                }
+                $str .= ','
+            }
+            $str =~ s/,$/\n/
+        }
+    } elsif ($opts{type} eq 'tracks') {
+        my (@exist, @want_and_exist);
+        @want_and_exist = @exist = _existing_fields( $o->iterate_trackpoints() );
+        @want_and_exist          = _array_intersection( $opts{fields}, \@exist ) if defined $opts{fields};
+        # for tracks, we can allow users to specify the Point's fields wanted but we also need to print
+        # for each track, its name (or track number if no name) and its segment number
+        # we can list these as the first two columns (always no tweaking allowed) followed by the points
+        # so need to iterate over each track and each track segment (segments have no names, so that's easy)
+
+        # TODO: finish coding that block
+        # what is tricky is that the iterator iterates over all trackpoints, regardless of the track
+        # so may need to create instances with a single track segment so if we have 2 tracks and one has 2 segments, we would need 3 instances
+        # let's pause coding this one until there is a need
+    } else {
+        # TODO: code that block
+    }
+
+    my $fh;
+    if (defined ($opts{encoding}) and ( $opts{encoding} eq 'latin1') ) {
+        open( $fh, ">:encoding(latin1)", $fname) or  die "can't open file $fname: $!";
+    } else {
+        open( $fh, ">", $fname)  or  die "can't open file $fname: $!";
+    }
+    print $fh $str;
+    return $str
+}
+
+sub _existing_fields {          # list of fields that exist in at least 1 $pt (excluding private ones)
+    my ($iter, %exist) = shift;
+    while ( my $pt = $iter->() ) {
+        for (keys %{$pt}) {             # TODO: consider adding an accessor to Point for the list of fields defined
+            ++$exist{$_} if /^(?!_)/
+        }
+    }
+    return keys %exist
+}
+
+sub _array_intersection {       # we respect the order of the first aref
+    my ($aref1, $aref2) = @_;
+    my (%exist2, @intersection);
+    ++$exist2{$_} for @$aref2;
+    for (@$aref1) {
+        push @intersection, $_ if $exist2{$_}
+    }
+    return @intersection
+}
+
+=over 4
+
 =item save( filename => $fname, key/values )
 
 Saves the C<Geo::Gpx> instance as a file.
