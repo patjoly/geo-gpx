@@ -1272,7 +1272,7 @@ Generate and return an XML string representation of the instance.
 I<key/values> are (all optional):
 
 Z<>    C<version>:        specifies the GPX XML version scheme to use (defaults to 1.0).
-Z<>    C<unsafe_chars>:   the set of characters to be considered unsafe for the XML mark-up and encoded as an entity.
+Z<>    C<unsafe_chars>:   the set of characters to be considered unsafe for the XML mark-up and encoded as HTML/XML entities.
 
 If C<version> is omitted, it defaults to the value of the C<version> attribute. Parsing a GPX document sets the version. If the C<version> attribute is unset defaults to 1.0.
 
@@ -1424,6 +1424,9 @@ Z<>    C<type>:      must be one of C<waypoints>, C<tracks>, or C<routes>.
 Z<>    C<fields>:    if an array reference is provided with fields names, will save only the fields specified, in the order listed (defaults to false to save all fields).
 Z<>    C<no_header>: omit the first line (i.e. header line) of field names when saving (defaults to false).
 Z<>    C<force>:     overwrites existing files if true, otherwise it won't.
+Z<>    C<unsafe_chars>:   the set of characters to be considered unsafe and encoded as HTML/XML entities.
+
+C<unsafe_chars> can be provided to specify which characters to consider unsafe and encoded. There is a one distinction compared to the behaviour of C<xml()> and C<save()>. By default, C<to_csv()> encodes no characters and only those characters specified will be encoded e.g. C<< unsafe_chars => '&' >> will encode the ampersand and nothing else.
 
 =back
 
@@ -1463,7 +1466,9 @@ sub to_csv {
             for my $key (@want_and_exist) {
                 if (defined $pt->{$key}) {  # TODO: a bit breaking under the hood, check if can just call the accessor
                     if ( $key =~ /^(name|desc|cmt|src|sym|type|fix|extensions)$/ ) {
-                        $str .= '"' . $pt->$key . '"'
+                        my $str_val = $pt->$key;
+                        $str_val = _enc( $str_val, $opts{unsafe_chars} ) if $opts{unsafe_chars};
+                        $str .= '"' . $str_val . '"'
                     } else {
                         $str .= $pt->$key
                     }

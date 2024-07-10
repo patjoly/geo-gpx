@@ -191,7 +191,7 @@ my $saved_then_read  = Geo::Gpx->new( input => $tmp_dir . '/test_save.gpx' );
 isa_ok ($saved_then_read,  'Geo::Gpx');
 
 # to_csv(): we are not testing all options
-my $ret_str1 = $o->to_csv( filename => $tmp_dir . '/waypoints.csv', type => 'waypoints', fields => [ qw/ name lat lon ele desc sym / ] );
+my $ret_str1 = $o->to_csv( filename => $tmp_dir . '/waypoints.csv', type => 'waypoints', fields => [ qw/ name lat lon ele desc sym / ], unsafe_chars => '&' );
 like( $ret_str1, '/^name,lat,lon,ele,desc,sym\n.*\n.*\n.*\n.*\n.*\n.*\n$/',  "    to_csv(): type => 'waypoints', check that the return string looks ok");
 # type => 'tracks|routes' not yet implemented:
 # my $ret_str2 = $o_wpt_only1->to_csv( filename => $tmp_dir . '/tracks.csv', type => 'tracks', fields => [ qw/ lat desc time ele / ] );
