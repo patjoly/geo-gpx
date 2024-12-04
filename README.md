@@ -201,7 +201,7 @@ Geo::Gpx - Create and parse GPX files
 
     `unsafe_chars` can be provided to specify which characters to consider unsafe in generating the XML mark-up. This field is then passed through to [HTML::Entities](https://metacpan.org/pod/HTML%3A%3AEntities) function calls whose documentation describes that this field is "specified using the regular expression character class syntax (what you find within brackets in regular expressions)".
 
-    As of version _1.11_ of `Geo::Gpx`, the default set of characters are the `'<'`, `'&'`, `'>'`, `'"'` characters. To revert to the pre-version _1.11_ default, which is equivalent to that in <`HTML::Entities`, explicitely specify `unsafe_chars => undef`. This will encode as the latter module describes the "control chars, high-bit chars, and the `'<'`, `'&'`, `'>'`, `"'"`, `'"'` characters".
+    As of version _1.11_ of `Geo::Gpx`, the default set of characters are the `'<'`, `'&'`, `'>'`, `'"'` characters. To revert to the pre-version _1.11_ default, which is equivalent to that in <`HTML::Entities`, explicitly specify `unsafe_chars => undef`. This will encode as the latter module describes the "control chars, high-bit chars, and the `'<'`, `'&'`, `'>'`, `"'"`, `'"'` characters".
 
 - TO\_JSON
 
